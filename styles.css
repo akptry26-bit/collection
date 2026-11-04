@@ -1,0 +1,593 @@
+/**
+ * Easy Collection - Micro Finance
+ * Comprehensive Enterprise Stylesheet (styles.css)
+ */
+
+/* ================= 1. DESIGN TOKENS & CSS VARIABLES ================= */
+:root {
+  /* Brand Palette */
+  --primary: #059669;
+  --primary-hover: #047857;
+  --primary-active: #065f46;
+  --primary-light: #ecfdf5;
+  --primary-border: #a7f3d0;
+  --primary-glow: rgba(5, 150, 105, 0.25);
+
+  /* Neutrals & Dark Tones */
+  --dark-navy: #0f172a;
+  --dark-card: #1e293b;
+  --bg-light: #f8fafc;
+  --card-bg: #ffffff;
+  --card-border: #e2e8f0;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-secondary: #475569;
+
+  /* Accent & Status Colors */
+  --danger-color: #dc2626;
+  --danger-light: #fef2f2;
+  --danger-border: #fecaca;
+  --warning-color: #d97706;
+  --warning-light: #fffbeb;
+  --warning-border: #fde68a;
+  --info-color: #0284c7;
+  --info-light: #f0f9ff;
+  --info-border: #bae6fd;
+  --purple-color: #7e22ce;
+  --purple-light: #f3e8ff;
+
+  /* Typography */
+  --app-font: 'Plus Jakarta Sans', 'Noto Sans Tamil', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --mono-font: 'JetBrains Mono', 'Courier New', monospace;
+
+  /* Elevation Shadows */
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-normal: 0.25s ease;
+}
+
+/* ================= 2. THEME & DARK MODE ENGINE ================= */
+body {
+  font-family: var(--app-font);
+  background-color: var(--bg-light);
+  color: var(--text-main);
+  font-size: 13.8px;
+  line-height: 1.5;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  transition: background-color var(--transition-normal), color var(--transition-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body.dark-mode {
+  --bg-light: #0b1120;
+  --card-bg: #1e293b;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --text-secondary: #cbd5e1;
+  --card-border: #334155;
+  background-color: #0b1120 !important;
+  color: #f8fafc !important;
+}
+
+body.dark-mode .app-card,
+body.dark-mode .app-header,
+body.dark-mode .mobile-bottom-nav,
+body.dark-mode .modal-content,
+body.dark-mode .setting-menu-tile,
+body.dark-mode .list-group-item {
+  background-color: var(--card-bg) !important;
+  color: var(--text-main) !important;
+  border-color: var(--card-border) !important;
+}
+
+body.dark-mode .table {
+  color: #f8fafc !important;
+  --bs-table-bg: transparent;
+  --bs-table-border-color: #334155;
+}
+
+body.dark-mode .table-custom thead th {
+  background-color: #0f172a !important;
+  color: #94a3b8 !important;
+  border-bottom: 2px solid #334155 !important;
+}
+
+body.dark-mode .form-control,
+body.dark-mode .form-select {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+}
+
+body.dark-mode .form-control:focus,
+body.dark-mode .form-select:focus {
+  background-color: #0f172a !important;
+  border-color: var(--primary) !important;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.3) !important;
+}
+
+body.dark-mode .form-control::placeholder {
+  color: #64748b;
+}
+
+body.dark-mode .bg-light {
+  background-color: #0f172a !important;
+  border-color: #334155 !important;
+  color: #f8fafc !important;
+}
+
+body.dark-mode .input-group-text {
+  background-color: #1e293b !important;
+  border-color: #334155 !important;
+  color: #94a3b8 !important;
+}
+
+/* ================= 3. TYPOGRAPHY & UTILITIES ================= */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.font-mono {
+  font-family: var(--mono-font) !important;
+}
+
+.font-sans {
+  font-family: var(--app-font) !important;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.select-none {
+  user-select: none;
+}
+
+/* Subtle Badges */
+.bg-purple-subtle { background-color: var(--purple-light) !important; }
+.text-purple { color: var(--purple-color) !important; }
+.bg-teal-subtle { background-color: #ccfbf1 !important; }
+.text-teal { color: #0f766e !important; }
+.bg-emerald-subtle { background-color: var(--primary-light) !important; }
+.bg-emerald { background-color: var(--primary) !important; }
+.text-emerald { color: var(--primary) !important; }
+
+/* Custom Thin Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+body.dark-mode ::-webkit-scrollbar-thumb {
+  background: #475569;
+}
+
+/* ================= 4. CARDS & BUTTONS ================= */
+.app-card {
+  background: var(--card-bg);
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  box-shadow: var(--shadow-xs);
+  transition: transform var(--transition-fast), box-shadow var(--transition-fast), border-color var(--transition-fast);
+}
+
+.app-card:hover {
+  box-shadow: var(--shadow-sm);
+}
+
+.auth-card {
+  max-width: 420px;
+  border-top: 4px solid var(--primary);
+  border-radius: 16px;
+}
+
+.auth-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  width: 58px;
+  height: 58px;
+  background-color: var(--primary);
+  box-shadow: 0 4px 14px var(--primary-glow);
+}
+
+.btn-emerald {
+  background-color: var(--primary);
+  color: #ffffff;
+  font-weight: 600;
+  border: none;
+  border-radius: 9px;
+  padding: 8px 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.btn-emerald:hover {
+  background-color: var(--primary-hover);
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--primary-glow);
+  transform: translateY(-1px);
+}
+
+.btn-emerald:active {
+  background-color: var(--primary-active);
+  transform: translateY(0);
+}
+
+/* ================= 5. SYSTEM DESKTOP LAYOUT (UP TO 1440PX) ================= */
+.system-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+@media (max-width: 768px) {
+  .system-container {
+    padding: 0 12px;
+  }
+}
+
+/* ================= 6. HEADER & REALTIME CLOCK ================= */
+.app-header {
+  background: var(--card-bg);
+  border-bottom: 1px solid var(--card-border);
+  position: sticky;
+  top: 0;
+  z-index: 1030;
+  padding: 10px 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.header-logo-badge {
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  background-color: var(--primary);
+  width: 38px;
+  height: 38px;
+  box-shadow: 0 2px 6px var(--primary-glow);
+}
+
+.live-clock-badge {
+  background: var(--primary-light);
+  border: 1px solid var(--primary-border);
+  color: var(--primary-hover);
+  padding: 6px 14px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+}
+
+body.dark-mode .live-clock-badge {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  color: #34d399;
+}
+
+/* ================= 7. DESKTOP NAVIGATION PILLS ================= */
+.nav-pill-btn {
+  padding: 8px 18px;
+  border-radius: 9px;
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all var(--transition-fast);
+}
+
+.nav-pill-btn:hover {
+  background: #f1f5f9;
+  color: var(--text-main);
+}
+
+body.dark-mode .nav-pill-btn:hover {
+  background: #334155;
+  color: #f8fafc;
+}
+
+.nav-pill-btn.active {
+  background: var(--primary);
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* ================= 8. MOBILE BOTTOM NAVIGATION ================= */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 62px;
+  background: var(--card-bg);
+  border-top: 1px solid var(--card-border);
+  z-index: 1040;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  box-shadow: 0 -3px 12px rgba(0, 0, 0, 0.04);
+}
+
+.mobile-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+  cursor: pointer;
+  width: 20%;
+  height: 100%;
+  border: none;
+  background: transparent;
+  text-decoration: none;
+  transition: color var(--transition-fast);
+}
+
+.mobile-nav-item i {
+  font-size: 19px;
+  margin-bottom: 2px;
+}
+
+.mobile-nav-item.active {
+  color: var(--primary);
+}
+
+/* ================= 9. DASHBOARD STAT WIDGETS ================= */
+.stat-icon-badge {
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 48px;
+  min-height: 48px;
+}
+
+/* ================= 10. TABLE CONTAINER & STICKY HEADERS ================= */
+.table-container {
+  max-height: 72vh;
+  overflow-y: auto;
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+}
+
+.table-custom thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8fafc;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--card-border);
+  z-index: 10;
+  padding: 11px 12px;
+  white-space: nowrap;
+}
+
+.table-custom tbody td {
+  padding: 11px 12px;
+  vertical-align: middle;
+  border-bottom: 1px solid var(--card-border);
+  font-size: 13.5px;
+}
+
+.table-custom tbody tr:hover {
+  background-color: rgba(5, 150, 105, 0.02);
+}
+
+body.dark-mode .table-custom tbody tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* ================= 11. GRID MENU TILES (SETTINGS & MASTER HUB) ================= */
+.setting-menu-tile {
+  background: var(--card-bg);
+  border-radius: 12px;
+  border: 1px solid var(--card-border);
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.setting-menu-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--primary);
+}
+
+.tile-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* ================= 12. BIOMETRIC SCANNER RING ================= */
+.biometric-scanner-ring {
+  width: 86px;
+  height: 86px;
+  border-radius: 50%;
+  border: 3px dashed var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  background: var(--primary-light);
+}
+
+body.dark-mode .biometric-scanner-ring {
+  background: rgba(5, 150, 105, 0.1);
+}
+
+.biometric-scanner-ring:hover {
+  transform: scale(1.05);
+}
+
+.biometric-scanner-ring.scanning {
+  animation: pulseBiometric 1.2s infinite ease-in-out;
+}
+
+@keyframes pulseBiometric {
+  0% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0.4); }
+  70% { transform: scale(1.05); box-shadow: 0 0 0 16px rgba(5, 150, 105, 0); }
+  100% { transform: scale(0.96); box-shadow: 0 0 0 0 rgba(5, 150, 105, 0); }
+}
+
+/* ================= 13. CUSTOMER PROFILE & CELEBRATION BANNER ================= */
+#cProfSettledBanner {
+  animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+#cProfRouteOrderBadge {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
+/* ================= 14. ROUTE SERIAL & EFFECTIVE DATE BAR ================= */
+#colCurrentEffectiveDate {
+  outline: none;
+  background: transparent;
+  color: var(--text-main);
+}
+
+/* ================= 15. THERMAL RECEIPT SLIP (58MM) ================= */
+.thermal-slip-body {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  padding: 10px;
+  border: 1px dashed #000;
+  background: #ffffff;
+  color: #000000;
+  width: 100%;
+  max-width: 280px;
+  margin: 0 auto;
+}
+
+/* ================= 16. AUDIT PDF DOCUMENT SHEET ================= */
+#auditPdfContainer {
+  font-family: var(--app-font);
+  color: #0f172a;
+  background: #ffffff;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.pdf-audit-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pdf-audit-table th {
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 6px 8px;
+  border: 1px solid #cbd5e1 !important;
+}
+
+.pdf-audit-table td {
+  padding: 6px 8px;
+  border: 1px solid #e2e8f0 !important;
+  font-size: 11.5px;
+}
+
+/* ================= 17. TOAST NOTIFICATION STYLING ================= */
+#appLiveToast {
+  border-radius: 10px;
+  box-shadow: var(--shadow-lg);
+  font-size: 13.5px;
+}
+
+/* ================= 18. MODALS & DIALOGS ================= */
+.modal-content {
+  border-radius: 16px;
+  border: 1px solid var(--card-border);
+  box-shadow: var(--shadow-lg);
+}
+
+#appConfirmModal .modal-content {
+  border-radius: 16px;
+}
+
+/* ================= 19. PRINT MEDIA ================= */
+@media print {
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Printable 58mm Thermal Slip */
+  #printableThermalSlip,
+  #printableThermalSlip * {
+    visibility: visible !important;
+  }
+  #printableThermalSlip {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 58mm !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Printable Audit PDF Container */
+  #auditPdfContainer,
+  #auditPdfContainer * {
+    visibility: visible !important;
+  }
+  #auditPdfContainer {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    margin: 0 !important;
+  }
+}

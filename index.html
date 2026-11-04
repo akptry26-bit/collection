@@ -1,0 +1,1672 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Easy Collection - Micro Finance</title>
+  
+  <!-- Bootstrap 5 CSS & Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+  
+  <!-- Fonts: Plus Jakarta Sans, Noto Sans Tamil & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Tamil:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- External Stylesheet -->
+  <link rel="stylesheet" href="styles.css" />
+
+  <!-- QRCode.js -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+
+  <!-- html2pdf.js for Audit PDF Generation -->
+  <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
+</head>
+<body>
+
+  <!-- ================= 0. AUTH / LOGIN VIEW ================= -->
+  <section id="view_login" class="min-vh-100 d-flex align-items-center justify-content-center p-3 bg-light">
+    <div class="app-card p-4 p-md-5 w-100 shadow-sm auth-card">
+      <div class="text-center mb-4">
+        <div class="auth-logo-badge mb-2">
+          <i class="bi bi-wallet2 fs-2 text-white"></i>
+        </div>
+        <h4 class="fw-bold mb-0 text-dark">Easy Collection</h4>
+        <span class="text-muted small fw-semibold" id="lblAuthSubtitle">Micro Finance & Line Collection System</span>
+      </div>
+
+      <form onsubmit="event.preventDefault(); app.handleLogin();">
+        <div class="mb-3">
+          <label class="form-label small fw-bold text-secondary" id="lblLoginPin">கடவுச்சொல் (PIN)</label>
+          <div class="input-group">
+            <span class="input-group-text bg-white border-end-0"><i class="bi bi-shield-lock-fill text-muted"></i></span>
+            <input type="password" id="loginPin" class="form-control font-mono text-center fs-4 border-start-0" placeholder="••••" required autofocus />
+          </div>
+          <div class="form-text small text-muted" id="lblDefaultPin">இயல்பு கடவுச்சொல் (Default PIN): <strong>1234</strong></div>
+        </div>
+
+        <button type="submit" class="btn btn-emerald w-100 py-2.5 mb-2 fw-bold" id="btnLoginSubmit">
+          <i class="bi bi-box-arrow-in-right me-1"></i> <span>உள்நுழைக (Login)</span>
+        </button>
+
+        <button type="button" class="btn btn-outline-success w-100 py-2 d-flex align-items-center justify-content-center gap-2" onclick="app.handleBiometricLogin()" id="btnBiometricLogin">
+          <i class="bi bi-fingerprint fs-5"></i>
+          <span>கைரேகை மூலம் உள்நுழைக</span>
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ================= MAIN APPLICATION ================= -->
+  <div id="mainApp" class="d-none pb-5 mb-4">
+
+    <!-- STRICT HEADER: Left Side Logo & Name | Right Side Live Date & Time ONLY -->
+    <header class="app-header">
+      <div class="system-container d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center gap-2">
+          <div class="header-logo-badge">
+            <i class="bi bi-layers-fill fs-5"></i>
+          </div>
+          <div>
+            <h6 class="fw-bold mb-0 text-dark leading-tight" style="font-size: 16px;">Easy Collection</h6>
+            <small class="text-success fw-bold d-block leading-none" style="font-size: 11px;">Micro Finance</small>
+          </div>
+        </div>
+
+        <div>
+          <div class="live-clock-badge font-mono d-flex align-items-center gap-1.5 shadow-xs">
+            <i class="bi bi-clock-history"></i>
+            <span id="headerLiveClock">நேரம் ஏற்றுகிறது...</span>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Desktop Navigation Menu Pills -->
+    <nav class="d-none d-md-block bg-white border-bottom py-2">
+      <div class="system-container d-flex align-items-center justify-content-between">
+        <div class="d-flex gap-1" id="desktopNavPills">
+          <button class="nav-pill-btn active" onclick="app.switchView('home')" id="pillNavHome">
+            <i class="bi bi-house-door-fill"></i><span>முகப்பு (Home)</span>
+          </button>
+          <button class="nav-pill-btn" onclick="app.switchView('master')" id="pillNavMaster">
+            <i class="bi bi-plus-square-fill"></i><span>பதிவுகள் (Master)</span>
+          </button>
+          <button class="nav-pill-btn" onclick="app.switchView('daybook')" id="pillNavDaybook">
+            <i class="bi bi-journal-bookmark-fill"></i><span>டே புக் (Day Book)</span>
+          </button>
+          <button class="nav-pill-btn" onclick="app.switchView('reports')" id="pillNavReports">
+            <i class="bi bi-file-earmark-bar-graph-fill"></i><span>அறிக்கைகள் (Reports)</span>
+          </button>
+          <button class="nav-pill-btn" onclick="app.switchView('settings')" id="pillNavSettings">
+            <i class="bi bi-gear-fill"></i><span>அமைப்புகள் (Settings)</span>
+          </button>
+        </div>
+
+        <button class="btn btn-outline-danger btn-sm px-3" onclick="app.logout()" id="btnNavLogout">
+          <i class="bi bi-power me-1"></i><span>வெளியேறு (Logout)</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Main Container -->
+    <main class="system-container py-3">
+
+      <!-- ================= 1. HOME VIEW ================= -->
+      <section id="view_home" class="page-view">
+        <div class="app-card p-3 p-md-4 mb-4 border-start border-4 border-success">
+          <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+            <h5 class="fw-bold mb-0 text-dark" id="lblHomeRouteHeading">
+              <i class="bi bi-geo-alt-fill text-success me-2"></i>வசூல் வழித்தடத் தேர்வு (Daily Route Selection)
+            </h5>
+            <span class="badge bg-success-subtle text-success border border-success-subtle font-mono px-2 py-1">Direct Collection Portal</span>
+          </div>
+
+          <form onsubmit="event.preventDefault(); app.submitHomeRoute();">
+            <div class="row g-3 align-items-end">
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblHomeDate">
+                  <i class="bi bi-calendar3 me-1 text-success"></i>வசூல் தேதி (Date) *
+                </label>
+                <input type="date" id="homeDate" class="form-control font-mono fw-bold" required />
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblHomeLine">
+                  <i class="bi bi-signpost-split me-1 text-success"></i>லைன் (Line) *
+                </label>
+                <select id="homeLine" class="form-select fw-bold" onchange="app.onHomeLineChange()" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="col-12 col-md-3">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblHomeArea">
+                  <i class="bi bi-pin-map me-1 text-success"></i>பகுதி / ஊர் (Area) *
+                </label>
+                <select id="homeArea" class="form-select fw-bold" required>
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="col-12 col-md-3">
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold d-flex align-items-center justify-content-center gap-2 shadow-sm" id="btnHomeSubmit">
+                  <span>வசூல் பட்டியல் செல்</span>
+                  <i class="bi bi-arrow-right-circle-fill fs-5"></i>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+
+        <!-- Today's Financial Telemetry Summary Card -->
+        <div class="row g-3 mb-4">
+          <div class="col-12 col-md-4">
+            <div class="app-card p-3 d-flex align-items-center gap-3">
+              <div class="stat-icon-badge bg-success-subtle text-success">
+                <i class="bi bi-cash-stack fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-bold d-block" id="lblHomeCardTotal">இன்றைய மொத்த வசூல்</small>
+                <h4 class="fw-bold text-dark font-mono mb-0" id="homeSummaryTotal">₹0</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="app-card p-3 d-flex align-items-center gap-3">
+              <div class="stat-icon-badge bg-primary-subtle text-primary">
+                <i class="bi bi-cash-coin fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-bold d-block" id="lblHomeCardCash">ரொக்கம் (Cash)</small>
+                <h4 class="fw-bold text-dark font-mono mb-0" id="homeSummaryCash">₹0</h4>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-4">
+            <div class="app-card p-3 d-flex align-items-center gap-3">
+              <div class="stat-icon-badge bg-info-subtle text-info">
+                <i class="bi bi-qr-code fs-3"></i>
+              </div>
+              <div>
+                <small class="text-muted fw-bold d-block" id="lblHomeCardUpi">UPI வங்கி வரவு</small>
+                <h4 class="fw-bold text-dark font-mono mb-0" id="homeSummaryUpi">₹0</h4>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 2. COLLECTION SHEET VIEW (WITH OVERDUE & BACKDATE & SERIAL SORT) ================= -->
+      <section id="view_collection" class="page-view d-none">
+        
+        <!-- Header & Action Ribbon -->
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+          <div class="d-flex align-items-center gap-2">
+            <button class="btn btn-outline-secondary btn-sm px-3" onclick="app.switchView('home')" id="btnColBack">
+              <i class="bi bi-arrow-left me-1"></i><span>முகப்பு (Back)</span>
+            </button>
+            <div>
+              <h5 class="fw-bold mb-0 text-dark" id="colHeaderTitle">வசூல் பட்டியல்</h5>
+              <small class="text-muted font-mono" id="colHeaderSubtitle">--</small>
+            </div>
+          </div>
+
+          <div class="d-flex align-items-center gap-2 flex-wrap">
+            <!-- BACKDATED ENTRY PICKER -->
+            <div class="d-flex align-items-center gap-1 bg-white p-1 rounded border shadow-2xs">
+              <span class="small fw-bold text-muted ps-1" style="font-size: 11px;">
+                <i class="bi bi-calendar-check text-emerald me-1"></i>தேதி:
+              </span>
+              <input type="date" id="colCurrentEffectiveDate" class="form-control form-control-sm border-0 font-mono fw-bold" style="width: 135px;" onchange="app.onColDateChange(this.value)" />
+            </div>
+
+            <!-- ROUTE SERIAL SORT SELECTOR -->
+            <select id="colSortOptionSelect" class="form-select form-select-sm fw-bold border-secondary-subtle" style="width: 175px;" onchange="app.renderCollectionSheet()">
+              <option value="route">தெரு வரிசை (Route Serial)</option>
+              <option value="acc">Acc எண் வரிசை</option>
+              <option value="name">பெயர் வரிசை (A-Z)</option>
+              <option value="balance">அதிக பாக்கி வரிசை</option>
+            </select>
+
+            <input type="text" id="colSearchInput" class="form-control form-control-sm" placeholder="பெயர் / Acc எண் தேட..." onkeyup="app.filterCollectionRows()" style="max-width: 180px;" />
+            <button class="btn btn-outline-dark btn-sm px-3" onclick="window.print()" id="btnColPrint">
+              <i class="bi bi-printer me-1"></i><span>பிரிண்ட்</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Filter Pills: ALL / PENDING / PAID / DEFAULTERS (OVERDUE) -->
+        <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
+          <button class="btn btn-sm btn-outline-secondary active px-3" id="btnFilterColAll" onclick="app.setCollectionFilter('ALL')">அனைத்தும் (All)</button>
+          <button class="btn btn-sm btn-outline-danger px-3" id="btnFilterColPending" onclick="app.setCollectionFilter('PENDING')">பாக்கி (Pending)</button>
+          <button class="btn btn-sm btn-outline-success px-3" id="btnFilterColPaid" onclick="app.setCollectionFilter('PAID')">கட்டியவர்கள் (Paid)</button>
+          
+          <!-- Defaulters / Overdue Filter Button -->
+          <button class="btn btn-sm btn-outline-warning text-dark fw-bold px-3 d-flex align-items-center gap-1" id="btnFilterColOverdue" onclick="app.setCollectionFilter('OVERDUE')">
+            <i class="bi bi-exclamation-triangle-fill text-warning"></i>
+            <span>தவணை தவறியவர்கள் (Overdue)</span>
+            <span class="badge bg-warning text-dark ms-1" id="badgeOverdueCount">0</span>
+          </button>
+        </div>
+
+        <!-- Customer Collection Table with Route Serial Sequence -->
+        <div class="table-container app-card">
+          <table class="table table-hover table-custom mb-0 font-mono">
+            <thead>
+              <tr>
+                <th style="width: 60px;" class="text-center">வரிசை</th>
+                <th style="width: 90px;" id="thColAcc">Acc எண்</th>
+                <th id="thColCust">வாடிக்கையாளர் பெயர்</th>
+                <th id="thColArea">ஊர் / பகுதி</th>
+                <th class="text-end" id="thColBal">மீதி பாக்கி</th>
+                <th class="text-end" id="thColDue">தவணைத் தொகை</th>
+                <th class="text-center" style="width: 260px;" id="thColPay">வசூல் உள்ளீடு (Payment)</th>
+                <th class="text-center" style="width: 140px;" id="thColAction">ரசீது / திருத்து</th>
+              </tr>
+            </thead>
+            <tbody id="collectionTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ================= 3. MASTER HUB (TILES LIKE SETTINGS) ================= -->
+      <section id="view_master" class="page-view d-none">
+        
+        <!-- 3A: MASTER MAIN MENU (GRID TILES) -->
+        <div id="masterMainMenuContainer">
+          <div class="mb-3">
+            <h4 class="fw-bold mb-0 text-dark" id="lblMasterHubTitle"><i class="bi bi-plus-square-fill text-success me-2"></i>பதிவுகள் மேலாண்மை (Master Hub)</h4>
+            <small class="text-muted" id="lblMasterHubSubtitle">கடன் வழங்கல், புதிய லைன் மற்றும் பகுதி மேலாண்மைக்கு கீழே உள்ள ஒன்றைத் தேர்ந்தெடுக்கவும்</small>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-4">
+              <div class="setting-menu-tile" onclick="app.openMasterSubPage('loan')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-success-subtle text-success">
+                    <i class="bi bi-cash-stack fs-4"></i>
+                  </div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblMasterTile1Title">1. புதிய கடன் வழங்கல்</strong>
+                    <small class="text-muted" id="lblMasterTile1Desc">2-படி ஆவணப் பதிவு & கடன் கணக்கீடு</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="setting-menu-tile" onclick="app.openMasterSubPage('line')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-primary-subtle text-primary">
+                    <i class="bi bi-signpost-split fs-4"></i>
+                  </div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblMasterTile2Title">2. புதிய லைன் சேர்க்க</strong>
+                    <small class="text-muted" id="lblMasterTile2Desc">தினசரி / வாராந்திர (ஞாயிறு-சனி) லைன்</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-4">
+              <div class="setting-menu-tile" onclick="app.openMasterSubPage('area')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-teal-subtle text-teal">
+                    <i class="bi bi-geo-alt fs-4"></i>
+                  </div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblMasterTile3Title">3. ஊர் / பகுதி மேலாண்மை</strong>
+                    <small class="text-muted" id="lblMasterTile3Desc">லைன்களுக்கு புதிய ஊர்கள் சேர்த்தல்</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3B: MASTER DEDICATED SUBPAGES -->
+        <div id="masterSubPageContainer" class="d-none">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <button class="btn btn-outline-secondary btn-sm px-3" onclick="app.backToMasterMenu()" id="btnBackToMaster">
+              <i class="bi bi-arrow-left me-1"></i><span>பதிவுகள் மெனுவுக்கு திரும்பு</span>
+            </button>
+            <span class="badge bg-success-subtle text-success border border-success-subtle font-mono text-xs" id="masterSubPageTitleBadge">
+              Master Section
+            </span>
+          </div>
+
+          <!-- SUBPAGE 1: NEW LOAN DISBURSAL (2-STEP WORKFLOW WITH ROUTE SERIAL) -->
+          <div id="masterSub_loan" class="master-subpage d-none">
+            <form onsubmit="event.preventDefault(); app.handleDisburseNewLoan();">
+              
+              <!-- STEP 1: CUSTOMER DETAILS -->
+              <div id="loanStep1Container">
+                <div class="app-card p-3 p-md-4 max-w-3xl mx-auto border-top border-4 border-success">
+                  <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                    <h5 class="fw-bold text-dark mb-0" id="lblLoanStep1Heading">
+                      <i class="bi bi-person-lines-fill text-success me-2"></i>படி 1: வாடிக்கையாளர் விவரங்கள்
+                    </h5>
+                    <span class="badge bg-light text-secondary border font-mono">Step 1 of 2</span>
+                  </div>
+
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label class="form-label small fw-bold text-secondary" id="lblLoanCustName">வாடிக்கையாளர் முழுப் பெயர் *</label>
+                      <input type="text" class="form-control" id="mCustName" placeholder="எ.கா. மு. கார்த்திக்" required />
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                      <label class="form-label small fw-bold text-secondary" id="lblLoanCustPhone">முதன்மை மொபைல் எண் (WhatsApp) *</label>
+                      <div class="input-group">
+                        <span class="input-group-text bg-light font-mono fw-bold">+91</span>
+                        <input type="tel" class="form-control font-mono" id="mCustPhone" placeholder="9876543210" maxlength="10" required />
+                      </div>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                      <label class="form-label small fw-bold text-secondary" id="lblLoanCustLine">லைன் (Line) *</label>
+                      <select class="form-select fw-semibold" id="mCustLine" onchange="app.onMasterLineChange()" required>
+                        <!-- Dynamic options -->
+                      </select>
+                    </div>
+
+                    <div class="col-12 col-md-4">
+                      <label class="form-label small fw-bold text-secondary" id="lblLoanCustArea">பகுதி / ஊர் (Area) *</label>
+                      <select class="form-select fw-semibold" id="mCustArea" required>
+                        <!-- Dynamic options -->
+                      </select>
+                    </div>
+
+                    <!-- ROUTE SERIAL ORDER NUMBER -->
+                    <div class="col-12 col-md-4">
+                      <label class="form-label small fw-bold text-primary">
+                        <i class="bi bi-sort-numeric-down me-1"></i>தெரு வரிசை எண் (Route Serial) *
+                      </label>
+                      <input type="number" class="form-control font-mono fw-bold" id="mCustRouteOrder" value="1" min="1" placeholder="1, 2, 3..." required />
+                      <small class="text-muted" style="font-size: 10.5px;">வசூல் செல்லும்போது வர வேண்டிய வரிசை</small>
+                    </div>
+
+                    <!-- EXTRA OPTIONAL FIELDS -->
+                    <div class="col-12">
+                      <div class="p-3 bg-light rounded border">
+                        <h6 class="fw-bold text-secondary mb-2" style="font-size: 13px;" id="lblExtraDetailsTitle">
+                          <i class="bi bi-card-checklist text-success me-1"></i>கூடுதல் விவரங்கள் (Extra Optional Details):
+                        </h6>
+                        <div class="row g-2">
+                          <div class="col-12 col-md-6">
+                            <label class="form-label small text-muted" id="lblLoanAltPhone">மாற்று மொபைல் எண் (விருப்பத்தேர்வு)</label>
+                            <input type="tel" class="form-control form-control-sm font-mono" id="mCustAltPhone" placeholder="9842100000" maxlength="10" />
+                          </div>
+                          <div class="col-12 col-md-6">
+                            <label class="form-label small text-muted" id="lblLoanAadhaar">ஆதார் எண் (விருப்பத்தேர்வு)</label>
+                            <input type="text" class="form-control form-control-sm font-mono" id="mCustAadhaar" placeholder="ஆதார் எண் (விருப்பத்தேர்வு)" maxlength="14" />
+                          </div>
+                          <div class="col-12">
+                            <label class="form-label small text-muted" id="lblLoanAddress">முழு முகவரி & பின்கோடு (விருப்பத்தேர்வு)</label>
+                            <textarea class="form-control form-control-sm" id="mCustAddress" rows="2" placeholder="கதவு எண், தெரு பெயர், ஊர், பின்கோடு"></textarea>
+                          </div>
+                          <div class="col-12">
+                            <label class="form-label small text-muted" id="lblLoanPhoto">வாடிக்கையாளர் புகைப்படம் (விருப்பத்தேர்வு)</label>
+                            <input type="file" class="form-control form-control-sm" id="mCustPhoto" accept="image/*" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-12 pt-2 text-end">
+                      <button type="button" class="btn btn-emerald px-4 py-2 fw-bold" onclick="app.goToLoanStep2()" id="btnGoToStep2">
+                        <span>அடுத்த படி: கடன் கணக்கீடு (Next Step)</span>
+                        <i class="bi bi-arrow-right ms-1"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- STEP 2: FINANCIAL CALCULATION -->
+              <div id="loanStep2Container" class="d-none">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                  <button type="button" class="btn btn-outline-secondary btn-sm px-3" onclick="app.backToLoanStep1()" id="btnBackToStep1">
+                    <i class="bi bi-arrow-left me-1"></i><span>படி 1-க்கு திரும்பு (Back)</span>
+                  </button>
+                  <span class="badge bg-success-subtle text-success border border-success-subtle font-mono" id="badgeStep2Title">Step 2 of 2: நிதி & தவணைக் கணக்கீடு</span>
+                </div>
+
+                <div class="row g-3">
+                  <div class="col-12 col-lg-5">
+                    <div class="app-card p-3 p-md-4 h-100">
+                      <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2" id="lblStep2SummaryHeading">
+                        <i class="bi bi-person-check-fill text-success me-2"></i>வாடிக்கையாளர் சுருக்கம்
+                      </h6>
+                      <div class="space-y-2 text-sm font-sans mb-3">
+                        <div><span class="text-muted" id="lblSumName">பெயர்:</span> <strong id="step2SummaryName">-</strong></div>
+                        <div><span class="text-muted" id="lblSumPhone">மொபைல்:</span> <strong class="font-mono text-dark" id="step2SummaryPhone">-</strong></div>
+                        <div><span class="text-muted" id="lblSumLine">லைன் / ஊர்:</span> <strong id="step2SummaryLineArea">-</strong></div>
+                        <div><span class="text-muted">தெரு வரிசை:</span> <span class="badge bg-primary-subtle text-primary font-mono" id="step2SummaryRoute">-</span></div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary" id="lblStep2StartDate">கடன் தொடங்கும் தேதி *</label>
+                        <input type="date" class="form-control font-mono fw-bold" id="mStartDate" onchange="app.calcLoanCloseDate()" required />
+                      </div>
+
+                      <div class="p-3 rounded bg-success-subtle border border-success-subtle">
+                        <small class="text-success fw-bold d-block" id="lblStep2CloseBadge">கடன் முடியும் தேதி (Auto-Calculated Close Date):</small>
+                        <span class="font-mono fw-bold text-success fs-5" id="mCloseDateBadge">--</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="col-12 col-lg-7">
+                    <div class="app-card p-3 p-md-4 h-100">
+                      <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                        <h6 class="fw-bold text-secondary mb-0" id="lblStep2CalcHeading">
+                          <i class="bi bi-calculator text-success me-2"></i>கடன் & தவணைக் கணக்கீடு
+                        </h6>
+                        <span class="badge bg-primary-subtle text-primary font-mono px-2 py-1" id="mFreqBadge">வாராந்திர (Weekly)</span>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary" id="lblStep2Principal">கடன் அசல் தொகை (Principal ₹) *</label>
+                        <div class="input-group mb-1.5">
+                          <span class="input-group-text bg-light fw-bold">₹</span>
+                          <input type="number" class="form-control form-control-lg fw-bold font-mono text-success" id="mPrincipal" value="10000" min="500" step="500" oninput="app.recomputeLoan('principal')" required />
+                        </div>
+                        <div class="d-flex gap-1 flex-wrap">
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="app.setPresetPrincipal(5000)">5K</button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="app.setPresetPrincipal(10000)">10K</button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="app.setPresetPrincipal(20000)">20K</button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="app.setPresetPrincipal(50000)">50K</button>
+                          <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2" onclick="app.setPresetPrincipal(100000)">1 Lakh</button>
+                        </div>
+                      </div>
+
+                      <div class="row g-2 mb-3">
+                        <div class="col-6">
+                          <label class="form-label small fw-bold text-secondary" id="lblStep2DocFee">ஆவணக் கட்டணம் (Doc ₹)</label>
+                          <input type="number" class="form-control font-mono" id="mDocFee" value="200" min="0" oninput="app.recomputeLoan('docFee')" />
+                        </div>
+                        <div class="col-6">
+                          <label class="form-label small fw-bold text-secondary" id="lblStep2HandCash">கை ரொக்கம் (Hand Cash ₹)</label>
+                          <input type="number" class="form-control font-mono fw-bold bg-light" id="mHandCash" value="9800" readonly />
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold text-secondary" id="mTenureLabel">தவணைகள் (வாரங்கள் - Weeks)</label>
+                        <input type="number" class="form-control font-mono fw-bold" id="mTenure" value="10" min="1" oninput="app.recomputeLoan('tenure')" required />
+                      </div>
+
+                      <div class="p-2.5 rounded bg-light border mb-3">
+                        <div class="d-flex align-items-center justify-content-between mb-1.5">
+                          <label class="form-label small fw-bold text-success mb-0" id="lblStep2PctTitle">
+                            <i class="bi bi-percent me-1"></i>% வட்டி / லாப சதவீதம் (% Auto-Calculate):
+                          </label>
+                          <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="mUsePctToggle" checked onchange="app.togglePctAutoCalc(this.checked)" />
+                          </div>
+                        </div>
+                        
+                        <div class="d-flex gap-1 flex-wrap align-items-center" id="mPctRow">
+                          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" onclick="app.setProfitPct(10)">10%</button>
+                          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" onclick="app.setProfitPct(15)">15%</button>
+                          <button type="button" class="btn btn-sm btn-success text-white py-0 px-2 active" id="chipM20" onclick="app.setProfitPct(20)">20%</button>
+                          <button type="button" class="btn btn-sm btn-outline-success py-0 px-2" onclick="app.setProfitPct(25)">25%</button>
+                          <div class="input-group input-group-sm" style="width: 80px;">
+                            <input type="number" class="form-control form-control-sm text-center font-mono" id="mCustomPct" value="20" min="1" max="100" oninput="app.setProfitPct(this.value)" />
+                            <span class="input-group-text p-1">%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="mb-3">
+                        <label class="form-label small fw-bold text-danger" id="lblStep2DueAmount">ஒரு தவணைத் தொகை (Per-Due Amount ₹) *</label>
+                        <div class="input-group">
+                          <span class="input-group-text bg-danger-subtle text-danger fw-bold">₹</span>
+                          <input type="number" class="form-control form-control-lg fw-bold text-danger font-mono" id="mDueAmount" value="1200" min="1" oninput="app.recomputeLoan('dueAmount')" required />
+                        </div>
+                      </div>
+
+                      <div class="p-3 rounded bg-success-subtle border border-success-subtle mb-3 space-y-1 text-xs font-mono">
+                        <div class="d-flex justify-content-between">
+                          <span class="text-secondary font-sans" id="lblStep2TotalRepay">மொத்த திருப்பி செலுத்தும் தொகை:</span>
+                          <strong class="text-success fs-6" id="mTotalRepayDisplay">₹12,000</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-secondary font-sans" id="lblStep2Profit">கூடுதல் லாபம் / வட்டி:</span>
+                          <strong class="text-success" id="mProfitDisplay">₹2,000</strong>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                          <span class="text-secondary font-sans" id="lblStep2NetHand">வழங்கப்படும் நிகர கை ரொக்கம்:</span>
+                          <strong class="text-dark" id="mNetHandDisplay">₹9,800</strong>
+                        </div>
+                      </div>
+
+                      <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold shadow-sm" id="btnDisburseLoanSubmit">
+                        <i class="bi bi-check2-circle me-1"></i> <span>கடனைப் பதிவு செய்து வழங்குக</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </form>
+          </div>
+
+          <!-- SUBPAGE 2: NEW LINE (SUNDAY TO SATURDAY PICKER) -->
+          <div id="masterSub_line" class="master-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <h5 class="fw-bold mb-3 text-dark" id="lblAddLineHeading"><i class="bi bi-signpost-split text-success me-2"></i>புதிய லைன் சேர்க்க (Add New Line)</h5>
+              
+              <form onsubmit="event.preventDefault(); app.handleSaveNewLine();">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblNewLineName">வரிசை பெயர் / எண் *</label>
+                  <input type="text" class="form-control" id="lineNameInput" placeholder="எ.கா. Line 1 - பஜார்" required />
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblNewLineFreq">வசூல் முறை *</label>
+                  <div class="d-flex gap-4">
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="lineFreqChoice" id="lineDaily" value="தினசரி (Daily)" checked onchange="app.toggleWeeklyDaySelect(false)" />
+                      <label class="form-check-label fw-bold" for="lineDaily">தினசரி (Daily)</label>
+                    </div>
+                    <div class="form-check">
+                      <input class="form-check-input" type="radio" name="lineFreqChoice" id="lineWeekly" value="வாராந்திர (Weekly)" onchange="app.toggleWeeklyDaySelect(true)" />
+                      <label class="form-check-label fw-bold" for="lineWeekly">வாராந்திர (Weekly)</label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mb-3 d-none" id="weeklyDaySelectBox">
+                  <label class="form-label small fw-bold text-primary" id="lblNewLineDay">வாராந்திர வசூல் நாள் (Sunday to Saturday) *</label>
+                  <select class="form-select fw-bold" id="lineWeeklyDay">
+                    <option value="ஞாயிறு (Sunday)">ஞாயிறு (Sunday)</option>
+                    <option value="திங்கள் (Monday)">திங்கள் (Monday)</option>
+                    <option value="செவ்வாய் (Tuesday)">செவ்வாய் (Tuesday)</option>
+                    <option value="புதன் (Wednesday)">புதன் (Wednesday)</option>
+                    <option value="வியாழன் (Thursday)">வியாழன் (Thursday)</option>
+                    <option value="வெள்ளி (Friday)">வெள்ளி (Friday)</option>
+                    <option value="சனி (Saturday)">சனி (Saturday)</option>
+                  </select>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblNewLineTarget">இலக்கு தொகை (Target ₹)</label>
+                  <input type="number" class="form-control font-mono" id="lineTargetInput" value="25000" />
+                </div>
+
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveLineSubmit">லைனைச் சேமிக்கவும்</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- SUBPAGE 3: ADD VILLAGE / AREA -->
+          <div id="masterSub_area" class="master-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <h5 class="fw-bold mb-3 text-dark" id="lblAddAreaHeading"><i class="bi bi-geo-alt text-success me-2"></i>ஊர் / பகுதி சேர்க்க (Add Village)</h5>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-secondary" id="lblSelectLineForArea">லைனைத் தேர்ந்தெடுக்கவும் *</label>
+                <select id="areaLineSelect" class="form-select fw-bold" onchange="app.renderMasterAreaChips()">
+                  <!-- Populated dynamically -->
+                </select>
+              </div>
+
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-secondary" id="lblExistingAreasTitle">தற்போது உள்ள ஊர்கள்:</label>
+                <div class="d-flex flex-wrap gap-1.5 p-3 rounded bg-light border min-h-[50px]" id="areaChipsBox">
+                  <!-- Chips -->
+                </div>
+              </div>
+
+              <form onsubmit="event.preventDefault(); app.handleSaveVillageArea();" class="row g-2">
+                <div class="col-8">
+                  <input type="text" class="form-control" id="newAreaNameInput" placeholder="புதிய ஊர் பெயர் உள்ளிடவும்" required />
+                </div>
+                <div class="col-4">
+                  <button type="submit" class="btn btn-emerald w-100" id="btnAddAreaSubmit">ஊரைச் சேர்</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ================= 4. CUSTOMER PROFILE VIEW (WITH DELETE & RE-LOAN & ROUTE SERIAL) ================= -->
+      <section id="view_customer" class="page-view d-none">
+        
+        <!-- Top Back Navigation & Action Buttons -->
+        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+          <button class="btn btn-outline-secondary btn-sm px-3" onclick="app.switchView('collection')" id="btnCustProfileBack">
+            <i class="bi bi-arrow-left me-1"></i><span>வசூல் பட்டியலுக்கு திரும்பு</span>
+          </button>
+          
+          <div class="d-flex gap-2 align-items-center" id="cProfActionButtonsBox">
+            <button class="btn btn-outline-danger btn-sm px-3 fw-bold" id="cProfFullSettleBtn" onclick="app.confirmFullSettleCustomer()">
+              <i class="bi bi-check2-all me-1"></i><span>முழு கடன் தீர்வு (Full Settle)</span>
+            </button>
+            <button class="btn btn-emerald btn-sm px-3 fw-bold d-none" id="cProfReLoanBtn" onclick="app.openDirectCustomerReLoanModal()">
+              <i class="bi bi-arrow-repeat me-1"></i><span>மறு கடன் வழங்குக (Issue Re-Loan)</span>
+            </button>
+
+            <!-- CUSTOMER DELETE OPTION (WITH SECURE IN-APP CONFIRMATION) -->
+            <button class="btn btn-outline-danger btn-sm px-2.5" onclick="app.confirmDeleteCustomer(app.currentCustId)" title="வாடிக்கையாளரை நிரந்தரமாக நீக்குக">
+              <i class="bi bi-trash3-fill"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- FULLY PAID / SETTLED CELEBRATION BANNER -->
+        <div class="p-3 mb-3 rounded-3 bg-success-subtle border-2 border-success d-none" id="cProfSettledBanner">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div class="d-flex align-items-center gap-3">
+              <div class="rounded-circle p-2 bg-success text-white">
+                <i class="bi bi-check-circle-fill fs-3"></i>
+              </div>
+              <div>
+                <h6 class="fw-bold text-success mb-0" id="lblSettledBannerTitle">வாழ்த்துகள்! கடன் கணக்கு முழுமையாக முடிக்கப்பட்டது</h6>
+                <small class="text-secondary" id="lblSettledBannerDesc">இந்த வாடிக்கையாளர் அனைத்துத் தவணைகளையும் வெற்றிகரமாக செலுத்தி முடித்துவிட்டார்.</small>
+              </div>
+            </div>
+            <button class="btn btn-emerald fw-bold px-3 py-2 shadow-sm" onclick="app.openDirectCustomerReLoanModal()" id="btnBannerReLoan">
+              <i class="bi bi-plus-circle-fill me-1"></i><span>புதிய மறு கடன் வழங்குக (Issue Re-Loan)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Executive Profile Card -->
+        <div class="app-card p-3 p-md-4 mb-3">
+          <div class="row g-3">
+            
+            <!-- Left Info Panel -->
+            <div class="col-12 col-md-5 border-end">
+              <div class="d-flex align-items-center gap-3 mb-3">
+                <div class="rounded-circle bg-emerald text-white d-flex align-items-center justify-content-center fw-bold fs-4" style="width: 52px; height: 52px; background-color: var(--primary);">
+                  <span id="cProfAvatar">K</span>
+                </div>
+                <div>
+                  <h4 class="fw-bold text-dark mb-0" id="cProfName">-</h4>
+                  <div class="d-flex align-items-center gap-2 mt-1 flex-wrap">
+                    <span class="badge bg-light text-dark border font-mono" id="cProfAcc">-</span>
+                    <span class="badge bg-primary-subtle text-primary border border-primary-subtle font-mono" id="cProfRouteOrderBadge">தெரு வரிசை: #1</span>
+                    <span class="badge bg-success-subtle text-success border border-success-subtle font-sans" id="cProfStatusBadge">செயலில் (Active)</span>
+                  </div>
+                </div>
+              </div>
+
+              <div class="space-y-1.5 text-sm font-sans pt-2 border-top">
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted" id="lblProfPhone">முதன்மை மொபைல்:</span>
+                  <a href="#" class="font-mono text-success fw-bold text-decoration-none" id="cProfPhone">-</a>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted" id="lblProfAltPhone">மாற்று மொபைல்:</span>
+                  <span class="font-mono text-dark fw-semibold" id="cProfAltPhone">-</span>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted" id="lblProfLineArea">லைன் & ஊர்:</span>
+                  <strong class="text-dark" id="cProfLineArea">-</strong>
+                </div>
+                <div class="d-flex justify-content-between">
+                  <span class="text-muted" id="lblProfDue">ஒரு தவணைத் தொகை:</span>
+                  <strong class="text-danger font-mono fs-6" id="cProfDue">-</strong>
+                </div>
+                <div class="pt-1 border-top">
+                  <span class="text-muted small d-block" id="lblProfAddress">முகவரி:</span>
+                  <span class="text-secondary small font-sans" id="cProfAddress">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Telemetry Panel -->
+            <div class="col-12 col-md-7">
+              <div class="row g-2 text-center font-mono mb-3">
+                <div class="col-6 col-sm-3 p-2 bg-light rounded border">
+                  <small class="text-muted font-sans d-block" style="font-size: 11px;" id="lblProfPrincipal">கடன் அசல்</small>
+                  <strong class="text-success fs-6" id="cProfPrincipal">₹0</strong>
+                </div>
+                <div class="col-6 col-sm-3 p-2 bg-light rounded border">
+                  <small class="text-muted font-sans d-block" style="font-size: 11px;" id="lblProfTotal">மொத்தத் தொகை</small>
+                  <strong class="text-dark fs-6" id="cProfTotal">₹0</strong>
+                </div>
+                <div class="col-6 col-sm-3 p-2 bg-light rounded border">
+                  <small class="text-muted font-sans d-block" style="font-size: 11px;" id="lblProfPaid">கட்டியது</small>
+                  <strong class="text-success fs-6" id="cProfPaid">₹0</strong>
+                </div>
+                <div class="col-6 col-sm-3 p-2 bg-light rounded border">
+                  <small class="text-muted font-sans d-block" style="font-size: 11px;" id="lblProfBal">மீதி பாக்கி</small>
+                  <strong class="text-danger fs-6" id="cProfBalance">₹0</strong>
+                </div>
+              </div>
+
+              <!-- Repayment Progress Bar -->
+              <div class="p-3 bg-light rounded border">
+                <div class="d-flex justify-content-between align-items-center mb-1 text-xs">
+                  <span class="fw-bold text-secondary" id="lblProfProgressTitle">தவணை செலுத்திய முன்னேற்றம்:</span>
+                  <span class="font-mono fw-bold text-success" id="cProfProgressPct">0%</span>
+                </div>
+                <div class="progress" style="height: 10px;">
+                  <div class="progress-bar bg-success" role="progressbar" id="cProfProgressBar" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- Ledger Table -->
+        <div class="app-card p-3">
+          <h6 class="fw-bold text-secondary mb-3" id="lblProfLedgerTitle"><i class="bi bi-clock-history me-1 text-success"></i>வரவுப் பதிவுகள் (Ledger History)</h6>
+          <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0 font-mono text-sm">
+              <thead class="bg-light text-secondary">
+                <tr>
+                  <th id="thLedgerReceipt">ரசீது எண்</th>
+                  <th id="thLedgerDateTime">தேதி & நேரம்</th>
+                  <th id="thLedgerAmount">கட்டிய தொகை</th>
+                  <th id="thLedgerMode">முறை</th>
+                  <th class="text-center" id="thLedgerPrint">ரசீது</th>
+                  <th class="text-center" id="thLedgerEdit">தொகை திருத்து</th>
+                </tr>
+              </thead>
+              <tbody id="cProfLedgerBody">
+                <!-- Ledger entries -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 5. DAY BOOK VIEW ================= -->
+      <section id="view_daybook" class="page-view d-none">
+        <div class="app-card p-3 p-md-4 mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 border-bottom pb-2">
+            <div>
+              <h4 class="fw-bold mb-0 text-dark" id="lblDayBookHeading"><i class="bi bi-journal-bookmark-fill text-success me-2"></i>டே புக் & ரொக்க சரிபார்ப்பு (Cash Reconciliation)</h4>
+              <small class="text-muted" id="lblDayBookSubtitle">ஆரம்ப இருப்பு, நேரடி வசூல், புதிய கடன் கழிவு மற்றும் தணிக்கை அறிக்கை</small>
+            </div>
+            
+            <div class="d-flex align-items-center gap-2">
+              <input type="date" id="dbDateSelect" class="form-control font-mono fw-bold w-auto" onchange="app.renderDayBook()" />
+              <button type="button" class="btn btn-danger btn-sm px-3 fw-bold" onclick="app.openDayBookAuditPdfModal()">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i>Audit PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Dual Opening Float Bar -->
+          <div class="p-3 rounded bg-light border mb-4">
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblDbOpeningCash">காலை ஆரம்ப ரொக்கம் (Opening Cash ₹)</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white fw-bold">₹</span>
+                  <input type="number" class="form-control font-mono fw-bold" id="dbOpeningCashInput" placeholder="0" />
+                </div>
+              </div>
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblDbOpeningBank">ஆரம்ப வங்கி இருப்பு (Opening Bank/UPI ₹)</label>
+                <div class="input-group input-group-sm">
+                  <span class="input-group-text bg-white fw-bold">₹</span>
+                  <input type="number" class="form-control font-mono fw-bold" id="dbOpeningBankInput" placeholder="0" />
+                </div>
+              </div>
+              <div class="col-12 col-md-4 d-flex gap-2">
+                <button type="button" class="btn btn-emerald btn-sm w-50 fw-bold" onclick="app.saveOpeningBalances()" id="btnDbSaveOpen">
+                  <i class="bi bi-save me-1"></i><span>இருப்பு சேமி</span>
+                </button>
+                <button type="button" class="btn btn-outline-success btn-sm w-50 fw-bold" onclick="app.sendDayBookWhatsApp()">
+                  <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Financial Metric Cards -->
+          <div class="row g-2 mb-4 font-mono text-center">
+            <div class="col-6 col-md-3">
+              <div class="p-2.5 rounded bg-light border">
+                <small class="text-muted font-sans d-block" id="lblDbCardOpen">ஆரம்ப ரொக்கம்</small>
+                <strong class="text-dark fs-6" id="dbDisplayOpenCash">₹0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2.5 rounded bg-success-subtle border border-success-subtle">
+                <small class="text-success font-sans fw-bold d-block" id="lblDbCardCashVasool">ரொக்க வசூல் (+)</small>
+                <strong class="text-success fs-6" id="dbDisplayCashVasool">₹0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2.5 rounded bg-primary-subtle border border-primary-subtle">
+                <small class="text-primary font-sans fw-bold d-block" id="lblDbCardUpiVasool">UPI வசூல் (வங்கி)</small>
+                <strong class="text-primary fs-6" id="dbDisplayUpiVasool">₹0</strong>
+              </div>
+            </div>
+            <div class="col-6 col-md-3">
+              <div class="p-2.5 rounded bg-danger-subtle border border-danger-subtle">
+                <small class="text-danger font-sans fw-bold d-block" id="lblDbCardExp">களச் செலவுகள் (-)</small>
+                <strong class="text-danger fs-6" id="dbDisplayExpenses">₹0</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- NEW LOANS DISBURSED TODAY TABLE -->
+          <div class="p-3 rounded bg-warning-subtle border border-warning mb-4">
+            <div class="d-flex align-items-center justify-content-between mb-2">
+              <h6 class="fw-bold text-dark mb-0" id="lblDbDisbursedHeading">
+                <i class="bi bi-cash-coin text-warning-emphasis me-2"></i>இன்று வழங்கிய புதிய கடன்கள் (Loans Disbursed Today)
+              </h6>
+              <span class="badge bg-warning text-dark font-mono fw-bold" id="dbDisbursedTotalBadge">₹0 (0 நபர்கள்)</span>
+            </div>
+
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-0 font-mono text-xs">
+                <thead class="bg-white text-secondary">
+                  <tr>
+                    <th>Acc எண்</th>
+                    <th id="thDbDisbCust">வாடிக்கையாளர் பெயர்</th>
+                    <th id="thDbDisbArea">லைன் / பகுதி</th>
+                    <th class="text-end" id="thDbDisbPrin">அசல் தொகை</th>
+                    <th class="text-end" id="thDbDisbHand">கை ரொக்கம் வழங்கியது</th>
+                  </tr>
+                </thead>
+                <tbody id="dbDisbursedLoansBody">
+                  <!-- Disbursed loan rows -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Cash in Hand Banner -->
+          <div class="p-3 rounded bg-success-subtle border-2 border-success mb-3 text-center">
+            <small class="text-success fw-bold font-sans d-block text-uppercase" id="lblDbClosingBanner">
+              <i class="bi bi-wallet-fill me-1"></i>ஆபிஸில் ஒப்படைக்க வேண்டிய ரொக்கம் (Closing Cash in Hand)
+            </small>
+            <h2 class="fw-bold text-success font-mono mb-1" id="dbDisplayClosingCash">₹0</h2>
+            <small class="text-muted font-sans font-semibold" id="lblDbClosingFormula">(ஆரம்ப ரொக்கம் + ரொக்க வசூல் - களச் செலவுகள் - இன்று வழங்கிய ரொக்கக் கடன்)</small>
+          </div>
+
+          <!-- Add Expense Form -->
+          <div class="p-3 rounded bg-light border mb-3">
+            <h6 class="fw-bold text-secondary mb-2" id="lblDbAddExpTitle">களச் செலவு பதிவு (Add Expense)</h6>
+            <form onsubmit="event.preventDefault(); app.handleAddExpense();" class="row g-2">
+              <div class="col-6 col-md-6">
+                <input type="text" class="form-control form-control-sm" id="expDesc" placeholder="செலவு விபரம் (பெட்ரோல் / உணவு)" required />
+              </div>
+              <div class="col-4 col-md-4">
+                <input type="number" class="form-control form-control-sm font-mono" id="expAmount" placeholder="தொகை ₹" min="1" required />
+              </div>
+              <div class="col-2 col-md-2">
+                <button type="submit" class="btn btn-danger btn-sm w-100" id="btnDbSubmitExp">பதிவு</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Expense Table -->
+          <div class="table-responsive">
+            <table class="table table-sm align-middle font-mono text-xs mb-0">
+              <thead class="bg-light text-secondary">
+                <tr>
+                  <th id="thDbExpDesc">செலவு விபரம்</th>
+                  <th class="text-end" id="thDbExpAmount">தொகை (₹)</th>
+                  <th class="text-center" style="width: 50px;">நீக்கு</th>
+                </tr>
+              </thead>
+              <tbody id="dbExpenseTableBody">
+                <!-- Expenses -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 6. REPORTS VIEW ================= -->
+      <section id="view_reports" class="page-view d-none">
+        <div class="app-card p-3 p-md-4 mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 border-bottom pb-2">
+            <div>
+              <h4 class="fw-bold mb-0 text-dark" id="lblRepHeading"><i class="bi bi-file-earmark-bar-graph-fill text-success me-2"></i>வசூல் தணிக்கை அறிக்கைகள் (Collection Reports)</h4>
+              <small class="text-muted" id="lblRepSubtitle">தேதி வாரியான வசூல் பதிவுகள் & CSV பதிவிறக்கம்</small>
+            </div>
+            
+            <div class="d-flex gap-2">
+              <button class="btn btn-outline-success btn-sm px-3" onclick="app.exportReportsCSV()" id="btnRepExportCsv">
+                <i class="bi bi-filetype-csv me-1"></i>CSV பதிவிறக்கம்
+              </button>
+              <button class="btn btn-outline-dark btn-sm px-3" onclick="window.print()" id="btnRepPrint">
+                <i class="bi bi-printer me-1"></i>அச்சு (Print)
+              </button>
+            </div>
+          </div>
+
+          <!-- Filter Mode: Single Date vs Date Range -->
+          <div class="p-3 bg-light rounded border mb-3">
+            <div class="d-flex align-items-center gap-3 mb-2">
+              <span class="small fw-bold text-secondary" id="lblRepDateMode">தேதி முறை:</span>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="repDateMode" id="repModeSingle" value="single" checked onchange="app.toggleReportDateMode('single')" />
+                <label class="form-check-label fw-bold" for="repModeSingle" id="lblRepModeSingle">குறிப்பிட்ட ஒரு நாள் (Particular Date)</label>
+              </div>
+              <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="repDateMode" id="repModeRange" value="range" onchange="app.toggleReportDateMode('range')" />
+                <label class="form-check-label fw-bold" for="repModeRange" id="lblRepModeRange">தேதி வரம்பு (Date to Date)</label>
+              </div>
+            </div>
+
+            <div class="row g-2 align-items-end">
+              <div class="col-12 col-md-3" id="repSingleDateCol">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblRepDateSingle">வசூல் தேதி (Date)</label>
+                <input type="date" id="repSingleDate" class="form-control font-mono" onchange="app.renderReports()" />
+              </div>
+
+              <div class="col-6 col-md-3 d-none" id="repRangeFromCol">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblRepDateFrom">தொடக்கத் தேதி (From)</label>
+                <input type="date" id="repFromDate" class="form-control font-mono" onchange="app.renderReports()" />
+              </div>
+              <div class="col-6 col-md-3 d-none" id="repRangeToCol">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblRepDateTo">முடிவுத் தேதி (To)</label>
+                <input type="date" id="repToDate" class="form-control font-mono" onchange="app.renderReports()" />
+              </div>
+
+              <div class="col-12 col-md-4">
+                <label class="form-label small fw-bold text-secondary mb-1" id="lblRepSelectLine">வரிசை (Line)</label>
+                <select id="repLineSelect" class="form-select fw-semibold" onchange="app.renderReports()">
+                  <option value="ALL">அனைத்து லைன்களும் (All Lines)</option>
+                </select>
+              </div>
+              <div class="col-12 col-md-2">
+                <button type="button" class="btn btn-emerald w-100" onclick="app.sendDailySummaryWhatsApp()">
+                  <i class="bi bi-whatsapp me-1"></i>WhatsApp
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Summary Badges -->
+          <div class="row g-2 mb-3 text-center font-mono">
+            <div class="col-4 p-2 bg-success-subtle rounded border border-success-subtle">
+              <small class="text-muted font-sans d-block" id="lblRepCardTotal">மொத்த வசூல்</small>
+              <strong class="text-success fs-5" id="repTotalDisplay">₹0</strong>
+            </div>
+            <div class="col-4 p-2 bg-light rounded border">
+              <small class="text-muted font-sans d-block" id="lblRepCardCash">ரொக்கம் (Cash)</small>
+              <strong class="text-dark fs-5" id="repCashDisplay">₹0</strong>
+            </div>
+            <div class="col-4 p-2 bg-primary-subtle rounded border border-primary-subtle">
+              <small class="text-primary font-sans d-block" id="lblRepCardUpi">UPI வரவு</small>
+              <strong class="text-primary fs-5" id="repUpiDisplay">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Reports Table -->
+          <div class="table-container app-card">
+            <table class="table table-hover table-custom mb-0 font-mono text-sm">
+              <thead>
+                <tr>
+                  <th id="thRepReceipt">ரசீது எண்</th>
+                  <th id="thRepDateTime">தேதி & நேரம்</th>
+                  <th id="thRepCust">வாடிக்கையாளர்</th>
+                  <th id="thRepLineArea">லைன் / பகுதி</th>
+                  <th id="thRepAmount">கட்டிய தொகை</th>
+                  <th id="thRepMode">முறை</th>
+                  <th id="thRepCollector">வசூலாளர்</th>
+                </tr>
+              </thead>
+              <tbody id="repTableBody">
+                <!-- Transactions -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 7. SETTINGS VIEW (WITH 1-CLICK BACKUP/RESTORE TILE) ================= -->
+      <section id="view_settings" class="page-view d-none">
+        
+        <!-- 7A: SETTINGS MAIN MENU (GRID TILES) -->
+        <div id="settingsMainMenuContainer">
+          <div class="mb-3">
+            <h4 class="fw-bold mb-0 text-dark" id="lblSettingsTitle"><i class="bi bi-gear-fill text-success me-2"></i>அமைப்புகள் (Settings Hub)</h4>
+            <small class="text-muted" id="lblSettingsSubtitle">கீழே உள்ள விருப்பங்களில் ஒன்றைத் தேர்ந்தெடுத்து அமைப்புகளை மாற்றலாம்</small>
+          </div>
+
+          <div class="row g-3">
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('language')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-purple-subtle text-purple"><i class="bi bi-translate fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileLang">1. மொழி தேர்வு (Language)</strong>
+                    <small class="text-muted" id="lblSetTileLangDesc">தமிழ் / English இடைமுகம்</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('profile')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-blue-subtle text-primary"><i class="bi bi-building fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileProfile">2. சுயவிவரம் & UPI (Profile)</strong>
+                    <small class="text-muted" id="lblSetTileProfileDesc">நிறுவனப் பெயர், UPI ID, வசூலாளர்</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('password')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-danger-subtle text-danger"><i class="bi bi-shield-lock-fill fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTilePass">3. கடவுச்சொல் (Password PIN)</strong>
+                    <small class="text-muted" id="lblSetTilePassDesc">உள்நுழைவு PIN மாற்றுதல்</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('biometric')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-success-subtle text-success"><i class="bi bi-fingerprint fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileBio">4. கைரேகை உள்நுழைவு (Biometric)</strong>
+                    <small class="text-muted" id="lblSetTileBioDesc">மொபைல் கைரேகை அமைப்பு</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('lines')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-teal-subtle text-teal"><i class="bi bi-signpost-split fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileLines">5. லைன் மேலாண்மை (Lines)</strong>
+                    <small class="text-muted" id="lblSetTileLinesDesc">லைன்கள் சேர்க்க, எடிட், நீக்க</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('areas')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-info-subtle text-info"><i class="bi bi-geo-alt fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileAreas">6. ஒதுக்கீடு பகுதிகள் (Areas)</strong>
+                    <small class="text-muted" id="lblSetTileAreasDesc">ஊர்கள் / பகுதிகள் மேலாண்மை</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('cloud')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-emerald-subtle text-success"><i class="bi bi-cloud-arrow-up-fill fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileCloud">7. ஆன்லைன் கிளவுட் (Cloud DB)</strong>
+                    <small class="text-muted" id="lblSetTileCloudDesc">Supabase & REST API இணைப்பு</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('theme')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-secondary-subtle text-secondary"><i class="bi bi-moon-stars-fill fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileTheme">8. தோற்றம் / தீம் (Theme)</strong>
+                    <small class="text-muted" id="lblSetTileThemeDesc">வெளிர் (Light) / இரவு (Dark)</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('pwa')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-warning-subtle text-warning-emphasis"><i class="bi bi-android2 fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-dark" id="lblSetTileApk">9. ஆண்ட்ராய்டு APK நிறுவல்</strong>
+                    <small class="text-muted" id="lblSetTileApkDesc">Android App Package (APK)</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-muted"></i>
+              </div>
+            </div>
+
+            <!-- TILE 10: 1-CLICK JSON BACKUP & RESTORE -->
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="setting-menu-tile border-primary-subtle" onclick="app.openSettingsSubPage('backup')">
+                <div class="d-flex align-items-center gap-3">
+                  <div class="tile-icon bg-primary text-white"><i class="bi bi-database-down fs-4"></i></div>
+                  <div>
+                    <strong class="d-block text-primary">10. முழு தரவு பேக்கப் & மீட்டெடுப்பு</strong>
+                    <small class="text-muted">1-Click JSON Backup & Restore</small>
+                  </div>
+                </div>
+                <i class="bi bi-chevron-right text-primary"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 7B: DEDICATED FULL SUBPAGES -->
+        <div id="settingsSubPageContainer" class="d-none">
+          <div class="d-flex align-items-center gap-2 mb-3 pb-2 border-bottom">
+            <button class="btn btn-outline-secondary btn-sm px-3" onclick="app.backToSettingsMenu()" id="btnBackToSettings">
+              <i class="bi bi-arrow-left me-1"></i><span>அமைப்புகள் மெனுவுக்கு திரும்பு</span>
+            </button>
+            <span class="badge bg-success-subtle text-success border border-success-subtle font-mono text-xs" id="subPageBadgeTitle">
+              Settings Subpage
+            </span>
+          </div>
+
+          <!-- Subpage 1: Language -->
+          <div id="subpage_language" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-lg mx-auto">
+              <h5 class="fw-bold mb-3" id="lblSubLangHeading">மொழி தேர்வு (Language Selection)</h5>
+              <div class="d-grid gap-2">
+                <button class="btn btn-success p-3 text-start fw-bold" id="btnLangSelectTa" onclick="app.setLanguage('ta')">
+                  <i class="bi bi-check-circle-fill me-2"></i>🇮🇳 தமிழ் (Tamil) - முன்னிருப்பு
+                </button>
+                <button class="btn btn-outline-secondary p-3 text-start fw-bold" id="btnLangSelectEn" onclick="app.setLanguage('en')">
+                  🌐 English (English Interface)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subpage 2: Profile -->
+          <div id="subpage_profile" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <h5 class="fw-bold mb-3" id="lblSubProfileHeading">நிறுவனம் & வசூலாளர் சுயவிவரம்</h5>
+              <form onsubmit="event.preventDefault(); app.saveGeneralSettings();">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblProfileCompanyName">நிறுவனப் பெயர் (Company Name) *</label>
+                  <input type="text" class="form-control fw-bold" id="cfgCompany" value="EASY COLLECTION" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblProfileCollectorName">வசூலாளர் பெயர் (Collector Agent) *</label>
+                  <input type="text" class="form-control fw-bold" id="cfgCollector" value="Admin Collector" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblProfileUpi">UPI VPA ID (For QR Code) *</label>
+                  <input type="text" class="form-control font-mono" id="cfgUpi" value="easycollection@upi" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblProfileOwnerPhone">உரிமையாளர் WhatsApp எண் *</label>
+                  <input type="tel" class="form-control font-mono" id="cfgOwnerPhone" value="9842100000" maxlength="10" required />
+                </div>
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveProfile">சுயவிவரம் சேமிக்கவும்</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Subpage 3: Password -->
+          <div id="subpage_password" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-md mx-auto">
+              <h5 class="fw-bold mb-3" id="lblSubPassHeading">கடவுச்சொல் மாற்றுதல் (Change PIN)</h5>
+              <form onsubmit="event.preventDefault(); app.handleChangePassword();">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblOldPass">தற்போதைய கடவுச்சொல் *</label>
+                  <input type="password" class="form-control font-mono text-center fs-5" id="cfgOldPass" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary" id="lblNewPass">புதிய கடவுச்சொல் (New PIN) *</label>
+                  <input type="password" class="form-control font-mono text-center fs-5" id="cfgNewPass" minlength="4" required />
+                </div>
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSubmitNewPass">PIN மாற்றுக</button>
+              </form>
+            </div>
+          </div>
+
+          <!-- Subpage 4: Biometric -->
+          <div id="subpage_biometric" class="settings-subpage d-none">
+            <div class="app-card p-4 text-center max-w-md mx-auto">
+              <h5 class="fw-bold mb-3" id="lblSubBioHeading">கைரேகை உள்நுழைவு அமைப்பு</h5>
+              <div class="biometric-scanner-ring mb-3" onclick="app.testBiometricScan()">
+                <i class="bi bi-fingerprint text-success" style="font-size: 3rem;"></i>
+              </div>
+              <p class="text-muted small" id="lblBioInstruction">மொபைல் கைரேகை சென்சாரை சோதிக்க மேலே உள்ள வளையத்தை அழுத்தவும்</p>
+            </div>
+          </div>
+
+          <!-- Subpage 5: Lines -->
+          <div id="subpage_lines" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4">
+              <div class="d-flex align-items-center justify-content-between mb-3">
+                <h5 class="fw-bold mb-0" id="lblSubLinesHeading">லைன் மேலாண்மை (Line List)</h5>
+                <button class="btn btn-emerald btn-sm px-3" onclick="app.switchView('master'); app.openMasterSubPage('line');">
+                  <i class="bi bi-plus-circle me-1"></i><span>புதிய லைன் சேர்க்க</span>
+                </button>
+              </div>
+              <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0 font-mono text-sm">
+                  <thead class="bg-light text-secondary">
+                    <tr>
+                      <th id="thSetLineName">லைன் பெயர்</th>
+                      <th id="thSetLineFreq">தவணை முறை</th>
+                      <th id="thSetLineDay">கிழமை</th>
+                      <th id="thSetLineTarget">இலக்கு</th>
+                      <th class="text-center" id="thSetLineAction">நீக்கு</th>
+                    </tr>
+                  </thead>
+                  <tbody id="settingsLinesTableBody">
+                    <!-- Populated dynamically -->
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subpage 6: Areas -->
+          <div id="subpage_areas" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <h5 class="fw-bold mb-3" id="lblSubAreasHeading">ஒதுக்கீடு பகுதிகள் மேலாண்மை</h5>
+              <div class="mb-3">
+                <label class="form-label small fw-bold text-secondary" id="lblSelectLineForSubArea">லைனைத் தேர்ந்தெடுக்கவும்:</label>
+                <select id="settingsAreaLineSelect" class="form-select fw-bold" onchange="app.renderSettingsAreaChips()">
+                  <!-- Dynamically populated -->
+                </select>
+              </div>
+              <div class="p-3 bg-light rounded border min-h-[60px] d-flex flex-wrap gap-1.5" id="settingsAreaChipsBox">
+                <!-- Area Chips -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Subpage 7: Cloud -->
+          <div id="subpage_cloud" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
+                <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Supabase / REST API கிளவுட்</h5>
+                <span class="badge bg-light text-secondary border font-mono" id="cloudStatusBadge">இணைக்கப்படவில்லை</span>
+              </div>
+
+              <div id="supabaseDiagnosticBox" class="p-3 rounded mb-3 border d-none">
+                <div class="d-flex align-items-start gap-2">
+                  <i class="bi bi-info-circle-fill fs-5 mt-0.5" id="supabaseDiagIcon"></i>
+                  <div class="text-xs font-sans">
+                    <strong class="d-block mb-1" id="supabaseDiagTitle">இணைப்பு நிலை</strong>
+                    <div id="supabaseDiagMessage" class="text-secondary">--</div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="p-2.5 rounded bg-light border mb-3 text-xs font-sans">
+                <div class="d-flex align-items-center justify-content-between mb-1">
+                  <span class="fw-bold text-dark"><i class="bi bi-database me-1 text-success"></i>Supabase Table அமைப்பு (SQL):</span>
+                  <button type="button" class="btn btn-outline-secondary btn-sm py-0 px-2 text-xs" onclick="app.copySupabaseSql()">SQL நகலெடு</button>
+                </div>
+                <small class="text-muted d-block">Supabase Dashboard &gt; SQL Editor-ல் இந்த Table-ஐ உருவாக்கவும்.</small>
+              </div>
+
+              <form onsubmit="event.preventDefault(); app.saveCloudSettings();">
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Supabase Project URL *</label>
+                  <input type="url" class="form-control font-mono" id="cfgCloudUrl" placeholder="https://xxxxxx.supabase.co" required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">Anon / Public API Key *</label>
+                  <input type="password" class="form-control font-mono" id="cfgCloudKey" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." required />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">டேபிள் பெயர் (Table Name)</label>
+                  <input type="text" class="form-control font-mono" id="cfgCloudTable" value="easy_collection_data" />
+                </div>
+                
+                <div class="d-flex gap-2">
+                  <button type="submit" class="btn btn-emerald flex-fill py-2 fw-bold" id="btnSaveCloud">சேமிக்கவும்</button>
+                  <button type="button" class="btn btn-outline-primary flex-fill py-2" onclick="app.testCloudConnection()" id="btnTestCloud">சோதிக்க (Test)</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <!-- Subpage 8: Theme -->
+          <div id="subpage_theme" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-md mx-auto text-center">
+              <h5 class="fw-bold mb-3" id="lblSubThemeHeading">தோற்றம் / தீம் தேர்வு</h5>
+              <div class="d-flex justify-content-center gap-3">
+                <button class="btn btn-outline-dark p-3 px-4 fw-bold" onclick="app.setTheme('light')" id="btnThemeLight">
+                  <i class="bi bi-sun-fill fs-3 d-block mb-1 text-warning"></i>வெளிர் (Light)
+                </button>
+                <button class="btn btn-dark p-3 px-4 fw-bold" onclick="app.setTheme('dark')" id="btnThemeDark">
+                  <i class="bi bi-moon-stars-fill fs-3 d-block mb-1 text-info"></i>இரவு (Dark)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Subpage 9: APK Installer -->
+          <div id="subpage_pwa" class="settings-subpage d-none">
+            <div class="app-card p-4 text-center max-w-md mx-auto">
+              <div class="header-logo-badge mx-auto mb-3" style="width: 60px; height: 60px; background-color: #059669;">
+                <i class="bi bi-android2 fs-1 text-white"></i>
+              </div>
+              <h5 class="fw-bold mb-1" id="lblApkHeading">Easy Collection Android APK</h5>
+              <p class="text-muted small mb-4" id="lblApkDesc">உங்கள் மொபைலில் ஆப்பை நேரடியாக நிறுவ APK பேக்கேஜை டவுன்லோட் செய்யவும்.</p>
+              
+              <div class="d-grid gap-2 mb-3">
+                <button class="btn btn-emerald py-2.5 fw-bold" onclick="app.downloadApkPackage()" id="btnDownloadApk">
+                  <i class="bi bi-download me-1"></i> <span>APK டவுன்லோட் (Download APK)</span>
+                </button>
+                <button class="btn btn-outline-secondary py-2" onclick="app.showApkInstallGuide()" id="btnApkGuide">
+                  <i class="bi bi-info-circle me-1"></i> <span>நிறுவல் வழிகாட்டி (How to Install)</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- SUBPAGE 10: 1-CLICK FULL JSON BACKUP & RESTORE -->
+          <div id="subpage_backup" class="settings-subpage d-none">
+            <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
+              <h5 class="fw-bold mb-2 text-dark"><i class="bi bi-database-down text-primary me-2"></i>முழு தரவு பேக்கப் & மீட்டெடுப்பு</h5>
+              <p class="text-muted small mb-4">உங்கள் லைன்கள், வாடிக்கையாளர்கள், வசூல் வரவுகள் மற்றும் அமைப்புகளை ஒரே கிளிக்கில் கணினியில் சேமிக்கவும் அல்லது மீட்டெடுக்கவும்.</p>
+
+              <!-- Export Section -->
+              <div class="p-3 bg-light rounded border mb-3">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                  <div>
+                    <strong class="d-block text-dark"><i class="bi bi-download text-success me-1"></i>1. பேக்கப் கோப்பு பதிவிறக்கம் (Export JSON)</strong>
+                    <small class="text-muted">அனைத்து வாடிக்கையாளர் மற்றும் வசூல் தகவல்களையும் JSON கோப்பாகச் சேமிக்கும்.</small>
+                  </div>
+                  <button type="button" class="btn btn-emerald px-3 py-2 fw-bold" onclick="app.exportFullJsonBackup()">
+                    <i class="bi bi-cloud-arrow-down-fill me-1"></i>பேக்கப் எடு (Download)
+                  </button>
+                </div>
+              </div>
+
+              <!-- Import Section -->
+              <div class="p-3 bg-light rounded border">
+                <strong class="d-block text-dark mb-1"><i class="bi bi-upload text-primary me-1"></i>2. பழைய பேக்கப் ஏற்றுதல் (Restore JSON)</strong>
+                <small class="text-muted d-block mb-3">ஏற்கனவே சேமிக்கப்பட்ட JSON பேக்கப் கோப்பைத் தேர்ந்தெடுத்து தரவை மீட்கவும்.</small>
+                
+                <div class="input-group">
+                  <input type="file" class="form-control" id="importJsonFileInput" accept=".json" />
+                  <button class="btn btn-primary fw-bold px-3" type="button" onclick="app.importFullJsonBackup()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>மீட்டெடு (Restore)
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+      </section>
+
+    </main>
+
+    <!-- Mobile Bottom Navigation Bar -->
+    <div class="mobile-bottom-nav d-md-none">
+      <button class="mobile-nav-item active" onclick="app.switchView('home')" id="mNavHome">
+        <i class="bi bi-house-door-fill"></i>
+        <span id="lblMobNavHome">முகப்பு</span>
+      </button>
+      <button class="mobile-nav-item" onclick="app.switchView('master')" id="mNavMaster">
+        <i class="bi bi-plus-square-fill"></i>
+        <span id="lblMobNavMaster">பதிவுகள்</span>
+      </button>
+      <button class="mobile-nav-item" onclick="app.switchView('daybook')" id="mNavDaybook">
+        <i class="bi bi-journal-bookmark-fill"></i>
+        <span id="lblMobNavDaybook">டே புக்</span>
+      </button>
+      <button class="mobile-nav-item" onclick="app.switchView('reports')" id="mNavReports">
+        <i class="bi bi-file-earmark-bar-graph-fill"></i>
+        <span id="lblMobNavReports">அறிக்கை</span>
+      </button>
+      <button class="mobile-nav-item" onclick="app.switchView('settings')" id="mNavSettings">
+        <i class="bi bi-gear-fill"></i>
+        <span id="lblMobNavSettings">அமைப்பு</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= MODALS & POPUPS ================= -->
+
+  <!-- MODAL: INLINE DIRECT CUSTOMER RE-LOAN -->
+  <div class="modal fade" id="customerReLoanModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-1">
+          <div>
+            <h5 class="modal-title fw-bold text-success mb-0" id="lblModalReLoanTitle"><i class="bi bi-arrow-repeat me-2"></i>மறு கடன் வழங்கல் (Issue Re-Loan)</h5>
+            <small class="text-muted" id="lblModalReLoanSubtitle">வாடிக்கையாளர் பழைய கணக்கு முடிவடைந்து புதிய கடன் தொடக்கம்</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form onsubmit="event.preventDefault(); app.handleDirectCustomerReLoanSubmit();">
+          <div class="modal-body py-2">
+            <input type="hidden" id="reLoanCustId" />
+            
+            <div class="row g-3">
+              <div class="col-12 col-md-6 border-end">
+                <div class="p-2.5 rounded bg-light border mb-3">
+                  <small class="text-muted d-block">வாடிக்கையாளர்:</small>
+                  <strong class="fs-6 text-dark" id="reLoanCustNameDisplay">-</strong>
+                  <div class="text-xs font-mono text-secondary mt-1" id="reLoanCustPhoneDisplay">-</div>
+                </div>
+
+                <div class="mb-3">
+                  <label class="form-label small fw-bold text-secondary">கடன் தொடங்கும் தேதி *</label>
+                  <input type="date" class="form-control font-mono fw-bold" id="reLoanStartDate" onchange="app.calcReLoanCloseDate()" required />
+                </div>
+
+                <div class="p-2.5 rounded bg-success-subtle border border-success-subtle">
+                  <small class="text-success fw-bold d-block">கடன் முடியும் தேதி (Close Date):</small>
+                  <span class="font-mono fw-bold text-success fs-6" id="reLoanCloseDateBadge">--</span>
+                </div>
+              </div>
+
+              <div class="col-12 col-md-6">
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-secondary">புதிய கடன் அசல் (Principal ₹) *</label>
+                  <input type="number" class="form-control fw-bold font-mono text-success" id="reLoanPrincipal" value="10000" min="500" step="500" oninput="app.recomputeReLoanModal()" required />
+                </div>
+
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <label class="form-label small fw-bold text-secondary">ஆவணக் கட்டணம்</label>
+                    <input type="number" class="form-control font-mono" id="reLoanDocFee" value="200" oninput="app.recomputeReLoanModal()" />
+                  </div>
+                  <div class="col-6">
+                    <label class="form-label small fw-bold text-secondary">வழங்கும் கை ரொக்கம்</label>
+                    <input type="number" class="form-control font-mono fw-bold bg-light" id="reLoanHandCash" value="9800" readonly />
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-secondary">தவணைகள் (Tenure)</label>
+                  <input type="number" class="form-control font-mono fw-bold" id="reLoanTenure" value="10" oninput="app.recomputeReLoanModal()" required />
+                </div>
+
+                <div class="mb-2">
+                  <label class="form-label small fw-bold text-danger">ஒரு தவணைத் தொகை (Per-Due ₹) *</label>
+                  <input type="number" class="form-control fw-bold font-mono text-danger" id="reLoanDueAmount" value="1200" required />
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-2 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal">ரத்து</button>
+            <button type="submit" class="btn btn-emerald w-50 fw-bold">மறு கடன் பதிவு செய்க</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: UNIVERSAL IN-APP CONFIRMATION (REPLACES BROWSER CONFIRM) -->
+  <div class="modal fade" id="appConfirmModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+      <div class="modal-content app-card p-3 text-center">
+        <div class="modal-body py-3">
+          <div class="rounded-circle p-2 d-inline-flex bg-danger-subtle text-danger mb-2">
+            <i class="bi bi-exclamation-triangle-fill fs-3"></i>
+          </div>
+          <h5 class="fw-bold text-dark mb-1" id="appConfirmModalTitle">உறுதிப்படுத்தல்</h5>
+          <p class="text-secondary small mb-0" id="appConfirmModalMessage">நீங்கள் இந்த செயலை தொடர விரும்புகிறீர்களா?</p>
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal" id="btnConfirmCancel">ரத்து</button>
+          <button type="button" class="btn btn-danger flex-fill fw-bold" id="btnConfirmProceed">தொடரவும்</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: EDIT PAYMENT -->
+  <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-1">
+          <h5 class="modal-title fw-bold text-danger"><i class="bi bi-pencil-square me-2"></i>வசூல் தொகை திருத்து</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form onsubmit="event.preventDefault(); app.saveEditedPayment();">
+          <div class="modal-body py-2">
+            <input type="hidden" id="editTxId" />
+            <div class="mb-2">
+              <small class="text-muted d-block">வாடிக்கையாளர்:</small>
+              <strong id="editTxCustName" class="text-dark fs-6">-</strong>
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-secondary">சரியான வசூல் தொகை (Correct Amount ₹) *</label>
+              <input type="number" class="form-control font-mono fw-bold fs-5 text-success" id="editTxAmount" min="1" required />
+            </div>
+            <div class="mb-3">
+              <label class="form-label small fw-bold text-secondary">செலுத்தும் முறை (Payment Mode) *</label>
+              <select class="form-select fw-bold" id="editTxMode">
+                <option value="CASH">CASH (ரொக்கம்)</option>
+                <option value="UPI">UPI (வங்கி வரவு)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer border-0 pt-1 d-flex gap-2">
+            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal">ரத்து</button>
+            <button type="submit" class="btn btn-emerald w-50 fw-bold">சேமிக்கவும்</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DYNAMIC UPI QR SCANNER -->
+  <div class="modal fade" id="upiModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 340px;">
+      <div class="modal-content app-card p-3 text-center">
+        <div class="modal-header border-0 pb-0 justify-content-end">
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body py-1">
+          <h6 class="fw-bold mb-1 text-dark">UPI QR ஸ்கேன் செய்க</h6>
+          <p class="text-muted small mb-2">GPay / PhonePe மூலம் செலுத்தலாம்</p>
+
+          <div class="p-2 bg-white rounded border d-inline-block shadow-xs mb-2">
+            <div id="upiQrCodeContainer"></div>
+          </div>
+
+          <div class="font-mono text-success fs-4 fw-bold mb-1" id="upiModalAmount">₹0</div>
+          <div class="text-muted small font-mono" id="upiModalCustName">--</div>
+        </div>
+        <div class="modal-footer border-0 pt-1 d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">ரத்து</button>
+          <button type="button" class="btn btn-emerald flex-fill fw-bold" onclick="app.confirmUpiReceived()">
+            <i class="bi bi-check2-all me-1"></i>வரவு வைக்கப்பட்டது
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: 58MM BLUETOOTH THERMAL RECEIPT SLIP -->
+  <div class="modal fade" id="thermalSlipModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 320px;">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-1">
+          <h6 class="modal-title fw-bold">ரசீது அச்சு (58mm Slip)</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body p-1" id="printableThermalSlip">
+          <div class="thermal-slip-body" id="slipBodyContent">
+            <!-- Dynamic thermal slip -->
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-2 d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary w-50 btn-sm" data-bs-dismiss="modal">மூடுக</button>
+          <button type="button" class="btn btn-dark w-50 btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>பிரிண்ட்
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PROFESSIONAL AUDIT PDF VIEWER -->
+  <div class="modal fade" id="auditPdfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-2 d-flex justify-content-between align-items-center">
+          <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>நிறுவன தணிக்கை அறிக்கை (Audit PDF)</h5>
+          <div class="d-flex gap-2">
+            <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="app.downloadAuditPdf()">
+              <i class="bi bi-download me-1"></i>PDF பதிவிறக்கம்
+            </button>
+            <button class="btn btn-outline-dark btn-sm px-3 fw-bold" onclick="window.print()">
+              <i class="bi bi-printer me-1"></i>அச்சு (Print)
+            </button>
+            <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
+          </div>
+        </div>
+        <div class="modal-body p-2 p-md-3 bg-light rounded">
+          <div id="auditPdfContainer" class="p-4 bg-white border rounded mx-auto" style="max-width: 900px;">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER (REPLACES BROWSER ALERTS) -->
+  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
+    <div id="appLiveToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body fw-semibold" id="toastMessageBody">
+          அறிவிப்பு
+        </div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+  <!-- External Application Logic Script -->
+  <script src="app.js"></script>
+</body>
+</html>
