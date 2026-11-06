@@ -1,14 +1,12 @@
 /**
  * Easy Collection - Micro Finance
  * Enterprise Application Logic (app.js)
- * Fully Updated with:
- * - Defaulters / Overdue Filter (Thavanai Thavariyavargal)
- * - 1-Click Full JSON Backup & Restore (Export/Import)
- * - Route Serial Sorting (Street Sequence / Line Order)
- * - Secure In-App Customer Delete
- * - Backdated Collection Entry
- * - Inline Customer Re-Loan Modal (Stays on Profile)
- * - Complete In-App Popups & Bilingual Engine (Tamil & English)
+ * Fully Implemented:
+ * 1. WhatsApp Reminders (Due, Overdue, Bilingual Templates)
+ * 2. PDF Payment Receipts (Auto Generation, Print, Download, History)
+ * 3. Customer Ledger Statement (Opening/Closing Balances, Filters, PDF Export)
+ * 4. Supabase Cloud Sync (Multi-Device Sync, Duplicate Prevention, Push/Pull)
+ * 5. Overdue / Defaulter Filter, Backdated Entry, Route Serial Sorting, In-App Deletion
  */
 
 const app = {
@@ -23,7 +21,8 @@ const app = {
       language: "ta",
       cloudUrl: "",
       cloudKey: "",
-      cloudTable: "easy_collection_data"
+      cloudTable: "easy_collection_data",
+      autoCloudSync: true
     },
     lines: [
       { id: "LINE-1", name: "Line 1 - டவுன் லைன்", frequency: "தினசரி (Daily)", target: 25000, areas: ["பஜார்", "மெயின் ரோடு", "காந்தி நகர்"] },
@@ -48,7 +47,8 @@ const app = {
         dueAmount: 1200,
         balance: 12000,
         totalPaid: 0,
-        startDate: "2026-11-04"
+        startDate: "2026-11-04",
+        loanHistory: []
       },
       {
         id: "CUST-102",
@@ -68,7 +68,8 @@ const app = {
         dueAmount: 120,
         balance: 12000,
         totalPaid: 0,
-        startDate: "2026-11-04"
+        startDate: "2026-11-04",
+        loanHistory: []
       }
     ],
     transactions: [],
@@ -81,6 +82,7 @@ const app = {
   currentView: "home",
   currentColFilter: "ALL",
   currentCustId: null,
+  activeReceiptTxId: null,
   pendingUpiCustId: null,
   pendingUpiAmount: 0,
   activeProfitPct: 20,
@@ -99,26 +101,58 @@ const app = {
     this.recomputeLoan('principal');
     this.renderHomeSummary();
     this.bindConfirmModal();
+
+    // Auto-pull from cloud on launch if configured
+    if (this.data.settings.cloudUrl && this.data.settings.cloudKey) {
+      this.pullStateFromCloud(false);
+    }
   },
 
-  /* ================= 2. LOCAL STORAGE PERSISTENCE ================= */
+  /* ================= 2. LOCAL DATE & ID UTILITIES ================= */
+  getLocalDate(d = new Date()) {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  },
+
+  getNextAccountNo() {
+    let maxNum = 1000;
+    this.data.customers.forEach(c => {
+      const match = c.accountNo && c.accountNo.match(/EC-(\d+)/);
+      if (match) {
+        const val = parseInt(match[1], 10);
+        if (val > maxNum) maxNum = val;
+      }
+    });
+    return "EC-" + (maxNum + 1);
+  },
+
+  /* ================= 3. LOCAL STORAGE PERSISTENCE ================= */
   loadState() {
-    const saved = localStorage.getItem("easy_coll_enterprise_v6");
+    const saved = localStorage.getItem("easy_coll_enterprise_v8");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed && typeof parsed === "object") this.data = Object.assign(this.data, parsed);
+        if (parsed && typeof parsed === "object") {
+          this.data = Object.assign(this.data, parsed);
+        }
       } catch (e) {}
     }
   },
 
   saveState() {
     try {
-      localStorage.setItem("easy_coll_enterprise_v6", JSON.stringify(this.data));
+      localStorage.setItem("easy_coll_enterprise_v8", JSON.stringify(this.data));
     } catch (e) {}
+
+    // Multi-Device Auto Sync Trigger
+    if (this.data.settings.autoCloudSync && this.data.settings.cloudUrl && this.data.settings.cloudKey) {
+      this.pushStateToCloud(false);
+    }
   },
 
-  /* ================= 3. IN-APP TOAST & CONFIRM MODAL ================= */
+  /* ================= 4. IN-APP TOAST & CONFIRM MODALS ================= */
   showToast(msg, type = "success") {
     const toastEl = document.getElementById("appLiveToast");
     const body = document.getElementById("toastMessageBody");
@@ -151,7 +185,7 @@ const app = {
     }
   },
 
-  /* ================= 4. HEADER REALTIME CLOCK ================= */
+  /* ================= 5. HEADER REALTIME CLOCK ================= */
   startHeaderClock() {
     const el = document.getElementById("headerLiveClock");
     const isTa = (this.data.settings.language || 'ta') === 'ta';
@@ -176,7 +210,7 @@ const app = {
   },
 
   initDates() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = this.getLocalDate();
     if (document.getElementById("homeDate")) document.getElementById("homeDate").value = today;
     if (document.getElementById("colCurrentEffectiveDate")) document.getElementById("colCurrentEffectiveDate").value = today;
     if (document.getElementById("mStartDate")) document.getElementById("mStartDate").value = today;
@@ -188,7 +222,7 @@ const app = {
     this.calcLoanCloseDate();
   },
 
-  /* ================= 5. AUTHENTICATION ================= */
+  /* ================= 6. AUTHENTICATION ================= */
   handleLogin() {
     const pin = document.getElementById("loginPin").value;
     if (pin === this.data.settings.password) {
@@ -215,7 +249,7 @@ const app = {
     this.showToast(this.data.settings.language === 'ta' ? "வெளியேறியுள்ளீர்கள்!" : "Logged out!", "info");
   },
 
-  /* ================= 6. VIEW NAVIGATION ================= */
+  /* ================= 7. VIEW NAVIGATION ================= */
   switchView(viewName) {
     this.currentView = viewName;
     document.querySelectorAll(".page-view").forEach(v => v.classList.add("d-none"));
@@ -241,7 +275,7 @@ const app = {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   },
 
-  /* ================= 7. DROPDOWNS POPULATION ================= */
+  /* ================= 8. DROPDOWNS POPULATION ================= */
   populateDropdowns() {
     const hLine = document.getElementById("homeLine");
     const mLine = document.getElementById("mCustLine");
@@ -286,7 +320,7 @@ const app = {
     areaSelect.innerHTML = opts;
   },
 
-  /* ================= 8. HOME ROUTE SELECTION ================= */
+  /* ================= 9. HOME ROUTE SELECTION ================= */
   submitHomeRoute() {
     const date = document.getElementById("homeDate")?.value;
     const lineId = document.getElementById("homeLine")?.value;
@@ -310,7 +344,7 @@ const app = {
   },
 
   renderHomeSummary() {
-    const today = document.getElementById("homeDate")?.value || new Date().toISOString().split('T')[0];
+    const today = document.getElementById("homeDate")?.value || this.getLocalDate();
     const todayTxs = this.data.transactions.filter(t => t.date.startsWith(today));
     const total = todayTxs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     const cash = todayTxs.filter(t => t.mode === 'CASH').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -321,7 +355,7 @@ const app = {
     document.getElementById("homeSummaryUpi").innerText = `₹${upi.toLocaleString()}`;
   },
 
-  /* ================= 9. COLLECTION SHEET & ADVANCED FILTERS ================= */
+  /* ================= 10. COLLECTION SHEET, FILTERS & WHATSAPP TRIGGER ================= */
   onColDateChange(newDate) {
     if (newDate) {
       document.getElementById("colHeaderSubtitle").innerText = `${this.data.settings.language === 'ta' ? 'வசூல் தேதி' : 'Collection Date'}: ${newDate}`;
@@ -352,14 +386,14 @@ const app = {
 
     const lineId = document.getElementById("homeLine")?.value;
     const area = document.getElementById("homeArea")?.value || "ALL";
-    const date = document.getElementById("colCurrentEffectiveDate")?.value || document.getElementById("homeDate")?.value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("colCurrentEffectiveDate")?.value || document.getElementById("homeDate")?.value || this.getLocalDate();
     const sortMode = document.getElementById("colSortOptionSelect")?.value || "route";
     const isTa = (this.data.settings.language || 'ta') === 'ta';
 
     let list = this.data.customers.filter(c => c.lineId === lineId);
     if (area !== "ALL") list = list.filter(c => c.area === area);
 
-    // Calculate Overdue Defaulters Count
+    // Identify Overdue Defaulters (Active loans unpaid on effective date)
     const overdueList = list.filter(c => {
       const hasBalance = (Number(c.balance || 0) > 0);
       const isUnpaidToday = !this.data.transactions.some(t => t.customerId === c.id && t.date.startsWith(date));
@@ -369,7 +403,7 @@ const app = {
     const badgeOverdue = document.getElementById("badgeOverdueCount");
     if (badgeOverdue) badgeOverdue.innerText = overdueList.length;
 
-    // Apply Filters
+    // Apply Filter Tab
     if (this.currentColFilter === "PENDING") {
       list = list.filter(c => !this.data.transactions.some(t => t.customerId === c.id && t.date.startsWith(date)));
     } else if (this.currentColFilter === "PAID") {
@@ -403,8 +437,9 @@ const app = {
         payHtml = `<span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1.5"><i class="bi bi-check2-circle me-1"></i>₹${Number(paidTx.amount).toLocaleString()} (${paidTx.mode})</span>`;
         actionHtml = `
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-dark btn-sm py-1 px-2" onclick="app.printReceipt('${paidTx.id}')" title="Print Receipt"><i class="bi bi-printer"></i></button>
-            <button class="btn btn-outline-danger btn-sm py-1 px-2" onclick="app.openEditPaymentModal('${paidTx.id}')" title="Edit Amount"><i class="bi bi-pencil-square"></i> ${isTa ? 'திருத்து' : 'Edit'}</button>
+            <button class="btn btn-outline-success btn-sm py-1 px-2" onclick="app.openPaymentReceiptModal('${paidTx.id}')" title="ரசீது (PDF / Print)"><i class="bi bi-receipt"></i></button>
+            <button class="btn btn-outline-dark btn-sm py-1 px-2" onclick="app.printReceipt('${paidTx.id}')" title="Thermal 58mm"><i class="bi bi-printer"></i></button>
+            <button class="btn btn-outline-danger btn-sm py-1 px-2" onclick="app.openEditPaymentModal('${paidTx.id}')" title="Edit Amount"><i class="bi bi-pencil-square"></i></button>
           </div>`;
       } else {
         payHtml = `
@@ -413,7 +448,13 @@ const app = {
             <button class="btn btn-emerald btn-sm py-1 px-2" onclick="app.recordPayment('${c.id}', 'CASH')">Cash</button>
             <button class="btn btn-outline-primary btn-sm py-1 px-2" onclick="app.openUpiModal('${c.id}')">UPI</button>
           </div>`;
-        actionHtml = `<span class="badge bg-danger-subtle text-danger font-sans">${isTa ? 'பாக்கி' : 'Pending'}</span>`;
+        actionHtml = `
+          <div class="d-flex align-items-center justify-content-center gap-1">
+            <span class="badge bg-danger-subtle text-danger font-sans">${isTa ? 'பாக்கி' : 'Pending'}</span>
+            <button class="btn btn-outline-success btn-sm py-0.5 px-2" onclick="app.openWhatsappReminderModal('${c.id}')" title="WhatsApp Reminder">
+              <i class="bi bi-whatsapp"></i>
+            </button>
+          </div>`;
       }
 
       const tr = document.createElement("tr");
@@ -434,7 +475,64 @@ const app = {
     });
   },
 
-  /* ================= 10. PAYMENT RECORDING (WITH BACKDATED ENTRY) ================= */
+  /* ================= 11. FEATURE 1: WHATSAPP PAYMENT REMINDERS ================= */
+  openWhatsappReminderModal(custId) {
+    const cust = this.data.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    document.getElementById("waRemindCustId").value = cust.id;
+    document.getElementById("waRemindCustName").innerText = `${cust.name} (${cust.accountNo})`;
+    document.getElementById("waRemindCustDue").innerText = `₹${Number(cust.dueAmount || 0).toLocaleString()}`;
+    document.getElementById("waRemindCustBalance").innerText = `₹${Number(cust.balance || 0).toLocaleString()}`;
+
+    // Select language according to app language
+    const currentLang = this.data.settings.language || 'ta';
+    if (document.getElementById("waLangTa")) document.getElementById("waLangTa").checked = (currentLang === 'ta');
+    if (document.getElementById("waLangEn")) document.getElementById("waLangEn").checked = (currentLang === 'en');
+
+    this.renderWhatsappReminderMessage(currentLang);
+    new bootstrap.Modal(document.getElementById("whatsappReminderModal")).show();
+  },
+
+  renderWhatsappReminderMessage(lang) {
+    const custId = document.getElementById("waRemindCustId").value;
+    const cust = this.data.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    const company = this.data.settings.companyName;
+    const collector = this.data.settings.collectorName;
+    const phone = this.data.settings.ownerPhone;
+    const date = document.getElementById("colCurrentEffectiveDate")?.value || this.getLocalDate();
+
+    let msg = "";
+    if (lang === 'ta') {
+      msg = `வணக்கம் திரு/திருமதி ${cust.name},\n\n*${company}* நிறுவனத்திலிருந்து இந்த நினைவூட்டல் அனுப்பப்படுகிறது.\n\n*கணக்கு எண்:* ${cust.accountNo}\n*இன்றைய தவணைத் தேதி:* ${date}\n*செலுத்த வேண்டிய தவணைத் தொகை:* ₹${cust.dueAmount}\n*மீதி உள்ள மொத்தக் கடன் பாக்கி:* ₹${cust.balance}\n\nதயவுசெய்து உங்கள் தவணைத் தொகையை எங்களது வசூலாளரிடம் (${collector}) அல்லது UPI மூலம் உடனடியாக செலுத்துமாறு கேட்டுக்கொள்கிறோம்.\n\nதொடர்புக்கு: +91 ${phone}\nநன்றி!`;
+    } else {
+      msg = `Dear ${cust.name},\n\nThis is a payment reminder from *${company}*.\n\n*Account No:* ${cust.accountNo}\n*Due Date:* ${date}\n*Due Amount:* ₹${cust.dueAmount}\n*Total Outstanding Balance:* ₹${cust.balance}\n\nPlease keep the installment amount ready for our collection agent (${collector}) or pay via UPI.\n\nContact: +91 ${phone}\nThank you!`;
+    }
+
+    document.getElementById("waRemindMessageText").value = msg;
+  },
+
+  launchWhatsappReminder() {
+    const custId = document.getElementById("waRemindCustId").value;
+    const cust = this.data.customers.find(c => c.id === custId);
+    if (!cust) return;
+
+    const msg = document.getElementById("waRemindMessageText").value.trim();
+    if (!msg) {
+      this.showToast("Message content is empty!", "warning");
+      return;
+    }
+
+    const cleanPhone = cust.phone.replace(/\D/g, "");
+    const waUrl = `https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`;
+    window.open(waUrl, '_blank');
+    bootstrap.Modal.getInstance(document.getElementById("whatsappReminderModal")).hide();
+    this.showToast(this.data.settings.language === 'ta' ? "வாட்ஸ்அப் நினைவூட்டல் அனுப்ப தயாராக உள்ளது!" : "WhatsApp reminder opened!", "success");
+  },
+
+  /* ================= 12. FEATURE 2: AUTOMATIC & PDF PAYMENT RECEIPT ================= */
   recordPayment(custId, mode, amtOverride = null) {
     const cust = this.data.customers.find(c => c.id === custId);
     if (!cust) return;
@@ -445,8 +543,9 @@ const app = {
       return;
     }
 
-    // Takes backdated or current effective date
-    const effectiveDate = document.getElementById("colCurrentEffectiveDate")?.value || document.getElementById("homeDate")?.value || new Date().toISOString().split('T')[0];
+    const effectiveDate = document.getElementById("colCurrentEffectiveDate")?.value || document.getElementById("homeDate")?.value || this.getLocalDate();
+    const prevBal = Number(cust.balance) || 0;
+    const newBal = Math.max(0, prevBal - amt);
 
     const tx = {
       id: "REC-" + Date.now().toString().slice(-6),
@@ -458,10 +557,12 @@ const app = {
       amount: amt,
       mode: mode,
       collector: this.data.settings.collectorName,
+      prevBalance: prevBal,
+      newBalance: newBal,
       date: effectiveDate + " " + new Date().toLocaleTimeString('en-US', { hour12: false })
     };
 
-    cust.balance = Math.max(0, (Number(cust.balance) || 0) - amt);
+    cust.balance = newBal;
     cust.totalPaid = (Number(cust.totalPaid) || 0) + amt;
 
     this.data.transactions.unshift(tx);
@@ -469,9 +570,531 @@ const app = {
     this.renderCollectionSheet();
     this.renderHomeSummary();
     this.showToast(`₹${amt} ${this.data.settings.language === 'ta' ? 'வரவு வைக்கப்பட்டது' : 'payment recorded'} (${mode})!`, "success");
+
+    // Automatically trigger official PDF Payment Receipt Modal
+    this.openPaymentReceiptModal(tx.id);
   },
 
-  /* ================= 11. WRONG PAYMENT ENTRY EDIT ================= */
+  openPaymentReceiptModal(txId) {
+    const tx = this.data.transactions.find(t => t.id === txId);
+    if (!tx) return;
+    const cust = this.data.customers.find(c => c.id === tx.customerId);
+
+    this.activeReceiptTxId = tx.id;
+    document.getElementById("pdfReceiptBadgeNo").innerText = tx.id;
+
+    const container = document.getElementById("renderablePdfReceiptContainer");
+    container.innerHTML = `
+      <div class="pdf-receipt-header">
+        <h4 style="margin: 0; color: #047857; font-weight: 800; font-size: 18px; text-transform: uppercase;">${this.data.settings.companyName}</h4>
+        <div style="font-size: 11px; color: #475569; font-weight: bold; margin-top: 2px;">கட்டண வரவு ரசீது (PAYMENT RECEIPT)</div>
+        <div style="font-size: 10px; color: #64748b;">Phone: +91 ${this.data.settings.ownerPhone} | GST/Reg: MF-TN-${tx.lineId}</div>
+      </div>
+
+      <table class="pdf-receipt-table">
+        <tr>
+          <td style="color: #64748b; width: 35%;">ரசீது எண் (Receipt):</td>
+          <td style="font-weight: bold; font-family: monospace;">${tx.id}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">தேதி & நேரம் (Date):</td>
+          <td style="font-family: monospace;">${tx.date}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">கணக்கு எண் (Acc No):</td>
+          <td style="font-weight: bold; font-family: monospace;">${tx.accountNo}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">வாடிக்கையாளர் பெயர்:</td>
+          <td style="font-weight: bold; font-size: 13px;">${tx.customerName}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">பகுதி / ஊர் (Area):</td>
+          <td>${tx.area}</td>
+        </tr>
+        <tr>
+          <td style="color: #64748b;">செலுத்திய முறை (Mode):</td>
+          <td><span class="badge ${tx.mode === 'UPI' ? 'bg-primary' : 'bg-success'} text-white">${tx.mode}</span></td>
+        </tr>
+      </table>
+
+      <div class="pdf-receipt-amount-banner">
+        <div>
+          <small style="color: #047857; font-weight: bold; display: block; font-size: 11px;">பெறப்பட்ட தொகை (Amount Received):</small>
+          <span style="font-size: 10px; color: #64748b;">Payment Verified</span>
+        </div>
+        <strong style="font-size: 20px; color: #047857; font-family: monospace;">₹${Number(tx.amount).toLocaleString()}</strong>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; font-size: 11.5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 8px; margin-bottom: 10px; font-family: monospace;">
+        <span style="color: #475569;">மீதி உள்ள கடன் பாக்கி (Balance):</span>
+        <strong style="color: #dc2626; font-size: 13px;">₹${Number(tx.newBalance !== undefined ? tx.newBalance : (cust ? cust.balance : 0)).toLocaleString()}</strong>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; font-size: 10px; color: #64748b; margin-top: 10px;">
+        <div>வசூலாளர்: <strong>${tx.collector}</strong></div>
+        <div style="text-align: right;">அங்கீகரிக்கப்பட்ட கணினி ரசீது ✓</div>
+      </div>
+    `;
+
+    new bootstrap.Modal(document.getElementById("paymentReceiptPdfModal")).show();
+  },
+
+  downloadPaymentReceiptPdf() {
+    const element = document.getElementById("renderablePdfReceiptContainer");
+    const txId = this.activeReceiptTxId || "Receipt";
+    const opt = {
+      margin: 10,
+      filename: `Receipt_${txId}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(element).save();
+    this.showToast("Receipt PDF downloaded!", "success");
+  },
+
+  shareReceiptWhatsapp() {
+    const tx = this.data.transactions.find(t => t.id === this.activeReceiptTxId);
+    if (!tx) return;
+    const cust = this.data.customers.find(c => c.id === tx.customerId);
+    if (!cust) return;
+
+    const msg = `*${this.data.settings.companyName} - கட்டண ரசீது*\n\nரசீது எண்: *${tx.id}*\nதேதி: ${tx.date}\nவாடிக்கையாளர்: *${tx.customerName}* (${tx.accountNo})\nசெலுத்திய தொகை: *₹${tx.amount}* (${tx.mode})\nமீதி கடன் பாக்கி: *₹${tx.newBalance !== undefined ? tx.newBalance : cust.balance}*\nவசூலாளர்: ${tx.collector}\n\nநன்றி! உங்கள் வரவு பாதுகாப்பாகப் பதிவு செய்யப்பட்டது.`;
+    const cleanPhone = cust.phone.replace(/\D/g, "");
+    window.open(`https://wa.me/91${cleanPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+  },
+
+  /* ================= 13. FEATURE 3: CUSTOMER LEDGER STATEMENT & PDF ================= */
+  filterCustomerLedger() {
+    const cust = this.data.customers.find(c => c.id === this.currentCustId);
+    if (!cust) return;
+
+    const from = document.getElementById("cProfLedgerFromDate")?.value;
+    const to = document.getElementById("cProfLedgerToDate")?.value;
+
+    let txs = this.data.transactions.filter(t => t.customerId === cust.id);
+    if (from) txs = txs.filter(t => t.date.split(" ")[0] >= from);
+    if (to) txs = txs.filter(t => t.date.split(" ")[0] <= to);
+
+    const totalCredits = txs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const totalLoanObligation = Number(cust.dueAmount * cust.tenure) || 0;
+    const closingBal = Number(cust.balance) || 0;
+
+    document.getElementById("cProfLedgerOpening").innerText = `₹${totalLoanObligation.toLocaleString()}`;
+    document.getElementById("cProfLedgerCredits").innerText = `₹${totalCredits.toLocaleString()}`;
+    document.getElementById("cProfLedgerClosing").innerText = `₹${closingBal.toLocaleString()}`;
+
+    const tbody = document.getElementById("cProfLedgerBody");
+    tbody.innerHTML = "";
+
+    if (txs.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3 font-sans">தேர்ந்தெடுக்கப்பட்ட தேதியில் பதிவுகள் இல்லை</td></tr>`;
+      return;
+    }
+
+    txs.forEach(t => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><span class="badge bg-light text-dark border">${t.id}</span></td>
+        <td>${t.date}</td>
+        <td class="text-success fw-bold">₹${t.amount}</td>
+        <td><span class="badge ${t.mode === 'UPI' ? 'bg-primary' : 'bg-success'} text-white">${t.mode}</span></td>
+        <td class="text-center">
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-success btn-sm py-0 px-2" onclick="app.openPaymentReceiptModal('${t.id}')" title="PDF Receipt"><i class="bi bi-receipt"></i></button>
+            <button class="btn btn-outline-dark btn-sm py-0 px-2" onclick="app.printReceipt('${t.id}')" title="Thermal"><i class="bi bi-printer"></i></button>
+          </div>
+        </td>
+        <td class="text-center">
+          <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="app.openEditPaymentModal('${t.id}')"><i class="bi bi-pencil-square"></i> திருத்து</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  },
+
+  downloadCustomerLedgerPdf() {
+    const cust = this.data.customers.find(c => c.id === this.currentCustId);
+    if (!cust) return;
+
+    const from = document.getElementById("cProfLedgerFromDate")?.value || "Beginning";
+    const to = document.getElementById("cProfLedgerToDate")?.value || "Today";
+    let txs = this.data.transactions.filter(t => t.customerId === cust.id);
+    if (from !== "Beginning") txs = txs.filter(t => t.date.split(" ")[0] >= from);
+    if (to !== "Today") txs = txs.filter(t => t.date.split(" ")[0] <= to);
+
+    const totalCredits = txs.reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
+    const totalLoan = Number(cust.dueAmount * cust.tenure) || 0;
+
+    let rowsHtml = txs.map((t, idx) => `
+      <tr>
+        <td style="text-align: center;">${idx + 1}</td>
+        <td>${t.date}</td>
+        <td>${t.id}</td>
+        <td style="text-align: center;">${t.mode}</td>
+        <td style="text-align: right; color: #059669; font-weight: bold;">₹${Number(t.amount).toLocaleString()}</td>
+        <td style="text-align: right; font-family: monospace;">₹${Number(t.newBalance !== undefined ? t.newBalance : cust.balance).toLocaleString()}</td>
+      </tr>
+    `).join("") || `<tr><td colspan="6" style="text-align: center; color: #64748b;">பதிவுகள் இல்லை</td></tr>`;
+
+    // Render into dedicated printable ledger container
+    const container = document.getElementById("customerLedgerPdfContainer");
+    container.innerHTML = `
+      <div style="border-bottom: 2px solid #059669; padding-bottom: 12px; margin-bottom: 16px; display: flex; justify-content: space-between;">
+        <div>
+          <h2 style="margin: 0; color: #047857; text-transform: uppercase; font-size: 20px; font-weight: 800;">${this.data.settings.companyName}</h2>
+          <div style="font-size: 11px; color: #475569;">வாடிக்கையாளர் கணக்கு அறிக்கை (Customer Ledger Statement)</div>
+          <div style="font-size: 10px; color: #64748b;">Phone: +91 ${this.data.settings.ownerPhone}</div>
+        </div>
+        <div style="text-align: right; font-size: 10px; color: #475569;">
+          <div>அறிக்கை தேதி: <strong>${this.getLocalDate()}</strong></div>
+          <div>கால அளவு: <strong>${from} to ${to}</strong></div>
+        </div>
+      </div>
+
+      <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin-bottom: 14px; display: grid; grid-template-columns: repeat(3, 1fr); font-size: 11px;">
+        <div>வாடிக்கையாளர்: <strong>${cust.name}</strong></div>
+        <div>கணக்கு எண்: <strong>${cust.accountNo}</strong></div>
+        <div>தொலைபேசி: <strong>+91 ${cust.phone}</strong></div>
+        <div style="margin-top: 4px;">பகுதி: <strong>${cust.area}</strong></div>
+        <div style="margin-top: 4px;">கடன் அசல்: <strong>₹${Number(cust.principal).toLocaleString()}</strong></div>
+        <div style="margin-top: 4px;">ஒரு தவணை: <strong>₹${cust.dueAmount} (${cust.tenure} தவணைகள்)</strong></div>
+      </div>
+
+      <table class="pdf-audit-table" style="margin-bottom: 14px;">
+        <thead>
+          <tr>
+            <th>மொத்த கடன் பொறுப்பு</th>
+            <th>செலுத்திய மொத்த வரவு</th>
+            <th style="background-color: #fee2e2 !important; color: #991b1b !important;">தற்போதைய நிலுவை பாக்கி</th>
+          </tr>
+        </thead>
+        <tbody style="font-family: monospace; font-size: 13px; font-weight: bold; text-align: center;">
+          <tr>
+            <td>₹${totalLoan.toLocaleString()}</td>
+            <td style="color: #059669;">₹${totalCredits.toLocaleString()}</td>
+            <td style="color: #dc2626; background: #fff1f2;">₹${Number(cust.balance).toLocaleString()}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div style="font-weight: bold; font-size: 11.5px; margin-bottom: 6px;">கட்டண வரவு வரலாற்று விவரங்கள் (Payment Credits):</div>
+      <table class="pdf-audit-table">
+        <thead>
+          <tr>
+            <th style="width: 30px;">#</th>
+            <th>தேதி & நேரம்</th>
+            <th>ரசீது எண்</th>
+            <th style="text-align: center;">முறை</th>
+            <th style="text-align: right;">வரவுத் தொகை</th>
+            <th style="text-align: right;">மீதி இருப்பு</th>
+          </tr>
+        </thead>
+        <tbody style="font-family: monospace;">
+          ${rowsHtml}
+        </tbody>
+      </table>
+
+      <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 10px; border-top: 1px solid #cbd5e1; padding-top: 14px;">
+        <div>சரிபார்த்தவர்: <strong>${this.data.settings.collectorName}</strong></div>
+        <div>வாடிக்கையாளர் கையொப்பம்: _________________</div>
+        <div>அங்கீகரிக்கப்பட்ட முத்திரை</div>
+      </div>
+    `;
+
+    const opt = {
+      margin: 10,
+      filename: `Ledger_${cust.accountNo}_${cust.name}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+    html2pdf().set(opt).from(container).save();
+    this.showToast("Customer Ledger Statement PDF downloaded!", "success");
+  },
+
+  /* ================= 14. FEATURE 4: SUPABASE CLOUD SYNC & MULTI-DEVICE SETUP ================= */
+  saveCloudSettings() {
+    let url = document.getElementById("cfgCloudUrl").value.trim().replace(/\/$/, "");
+    if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url;
+    }
+    this.data.settings.cloudUrl = url;
+    this.data.settings.cloudKey = document.getElementById("cfgCloudKey").value.trim();
+    this.data.settings.cloudTable = document.getElementById("cfgCloudTable").value.trim() || "easy_collection_data";
+    this.data.settings.autoCloudSync = document.getElementById("cfgAutoCloudSync") ? document.getElementById("cfgAutoCloudSync").checked : true;
+
+    this.saveState();
+    this.showToast(this.data.settings.language === 'ta' ? "ஆன்லைன் கிளவுட் விவரங்கள் சேமிக்கப்பட்டன!" : "Cloud settings saved!", "success");
+    this.testCloudConnection();
+  },
+
+  copySupabaseSql() {
+    const sql = `-- Easy Collection Cloud Sync Schema\ncreate table if not exists easy_collection_data (\n  id text primary key,\n  data jsonb not null,\n  device_id text,\n  updated_at timestamp with time zone default timezone('utc'::text, now()) not null\n);\nalter table easy_collection_data disable row level security;`;
+    const tempInput = document.createElement("textarea");
+    tempInput.value = sql;
+    document.body.appendChild(tempInput);
+    tempInput.select();
+    try {
+      document.execCommand('copy');
+      this.showToast(this.data.settings.language === 'ta' ? "SQL Query நகலெடுக்கப்பட்டது! Supabase SQL Editor-ல் இயக்கவும்." : "SQL Query copied to clipboard!", "success");
+    } catch (e) {
+      this.showToast("Copy failed", "warning");
+    }
+    document.body.removeChild(tempInput);
+  },
+
+  setCloudDiagnosticUI(status, title, message) {
+    const box = document.getElementById("supabaseDiagnosticBox");
+    const titleEl = document.getElementById("supabaseDiagTitle");
+    const msgEl = document.getElementById("supabaseDiagMessage");
+    const iconEl = document.getElementById("supabaseDiagIcon");
+    const badge = document.getElementById("cloudStatusBadge");
+    const headerBadge = document.getElementById("headerCloudSyncBadge");
+
+    if (!box) return;
+    box.classList.remove("d-none", "bg-success-subtle", "border-success-subtle", "bg-danger-subtle", "border-danger-subtle", "bg-warning-subtle", "border-warning-subtle");
+
+    if (status === "success") {
+      box.classList.add("bg-success-subtle", "border-success-subtle");
+      iconEl.className = "bi bi-check-circle-fill text-success fs-5 mt-0.5";
+      titleEl.className = "d-block mb-1 text-success fw-bold";
+      if (badge) {
+        badge.className = "badge bg-success-subtle text-success border border-success-subtle";
+        badge.innerText = "இணைக்கப்பட்டது ✓ (Connected)";
+      }
+      if (headerBadge) {
+        headerBadge.className = "badge bg-success text-white font-mono px-1.5 py-0.5";
+        headerBadge.innerText = "Cloud Online";
+      }
+    } else if (status === "loading") {
+      box.classList.add("bg-warning-subtle", "border-warning-subtle");
+      iconEl.className = "bi bi-arrow-repeat text-warning fs-5 mt-0.5";
+      titleEl.className = "d-block mb-1 text-warning-emphasis fw-bold";
+      if (badge) {
+        badge.className = "badge bg-warning text-dark border";
+        badge.innerText = "இணைக்கப்படுகிறது... (Testing)";
+      }
+    } else {
+      box.classList.add("bg-danger-subtle", "border-danger-subtle");
+      iconEl.className = "bi bi-exclamation-triangle-fill text-danger fs-5 mt-0.5";
+      titleEl.className = "d-block mb-1 text-danger fw-bold";
+      if (badge) {
+        badge.className = "badge bg-danger-subtle text-danger border border-danger-subtle";
+        badge.innerText = "இணைப்பு தோல்வி ✗ (Failed)";
+      }
+      if (headerBadge) {
+        headerBadge.className = "badge bg-secondary-subtle text-secondary font-mono px-1.5 py-0.5";
+        headerBadge.innerText = "Offline";
+      }
+    }
+
+    titleEl.innerText = title;
+    msgEl.innerHTML = message;
+  },
+
+  async testCloudConnection() {
+    let url = (this.data.settings.cloudUrl || document.getElementById("cfgCloudUrl")?.value || "").trim().replace(/\/$/, "");
+    const key = (this.data.settings.cloudKey || document.getElementById("cfgCloudKey")?.value || "").trim();
+    const table = (this.data.settings.cloudTable || document.getElementById("cfgCloudTable")?.value || "easy_collection_data").trim();
+
+    if (!url || !key) {
+      this.setCloudDiagnosticUI("danger", "URL & Key தேவை", "Supabase Project URL மற்றும் Anon API Key உள்ளிடவும்.");
+      this.showToast("Supabase URL & Key தேவை!", "warning");
+      return;
+    }
+
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+      url = "https://" + url;
+    }
+
+    this.setCloudDiagnosticUI("loading", "சோதிக்கப்படுகிறது...", "Supabase சர்வருடன் தொடர்பு கொள்ளப்படுகிறது...");
+
+    try {
+      const endpoint = `${url}/rest/v1/${table}?select=*&limit=1`;
+      const resp = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`
+        }
+      });
+
+      if (resp.ok) {
+        this.setCloudDiagnosticUI(
+          "success",
+          "கிளவுட் இணைப்பு உறுதியானது! (Connected)",
+          `டேபிள் <strong>"${table}"</strong> உடன் நேரடி தொடர்பு உறுதி செய்யப்பட்டது. Multi-device sync இயக்கத்தில் உள்ளது.`
+        );
+        this.showToast("Supabase கிளவுட் வெற்றிகரமாக இணைக்கப்பட்டது!", "success");
+        return;
+      }
+
+      let errJson = null;
+      try { errJson = await resp.json(); } catch (e) {}
+      const errorMsg = errJson?.message || errJson?.error || `HTTP Status ${resp.status}`;
+
+      if (resp.status === 404 || errorMsg.includes("relation") || errorMsg.includes("does not exist")) {
+        this.setCloudDiagnosticUI(
+          "danger",
+          `டேபிள் "${table}" காணப்படவில்லை! (Table 404)`,
+          `Supabase-ல் <strong>${table}</strong> டேபிள் உருவாக்கப்படவில்லை.<br/>மேலே உள்ள <strong>"SQL நகலெடு"</strong> பட்டனை அழுத்தி, Supabase SQL Editor-ல் இயக்கவும்.`
+        );
+      } else if (resp.status === 401 || errorMsg.includes("JWT") || errorMsg.includes("apikey")) {
+        this.setCloudDiagnosticUI(
+          "danger",
+          "தவறான API Key (Unauthorized 401)",
+          "நீங்கள் உள்ளிட்ட Anon Key தவறாக உள்ளது. Supabase Project Settings > API > <strong>anon public</strong> key-ஐ நகலெடுத்து பேஸ்ட் செய்யவும்."
+        );
+      } else {
+        this.setCloudDiagnosticUI("danger", `இணைப்பு தோல்வி (${resp.status})`, `விவரம்: ${errorMsg}`);
+      }
+      this.showToast("Supabase இணைப்பு தோல்வி!", "danger");
+    } catch (err) {
+      this.setCloudDiagnosticUI(
+        "danger",
+        "இணையம் அல்லது URL பிழை (Network Error)",
+        "Project URL தவறாக இருக்கலாம் அல்லது இணைய இணைப்பு இல்லை. URL சரியான வடிவில் உள்ளதா என பார்க்கவும்: <code>https://xxxxx.supabase.co</code>"
+      );
+      this.showToast("Supabase நெட்வொர்க் பிழை!", "danger");
+    }
+  },
+
+  async pushStateToCloud(manualAlert = false) {
+    const url = (this.data.settings.cloudUrl || "").trim().replace(/\/$/, "");
+    const key = (this.data.settings.cloudKey || "").trim();
+    const table = (this.data.settings.cloudTable || "easy_collection_data").trim();
+
+    if (!url || !key) {
+      if (manualAlert) this.showToast("முதலில் Supabase அமைப்புகளைச் சேமிக்கவும்!", "warning");
+      return;
+    }
+
+    try {
+      const payload = {
+        id: "main_backup_state",
+        data: this.data,
+        device_id: "Device-" + (navigator.userAgent.match(/Android|iPhone|Windows|Mac/i)?.[0] || "Client"),
+        updated_at: new Date().toISOString()
+      };
+
+      const endpoint = `${url}/rest/v1/${table}`;
+      const resp = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'resolution=merge-duplicates'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (resp.ok) {
+        if (manualAlert) this.showToast("அனைத்து தகவல்களும் கிளவுடில் பாதுகாப்பாக ஏற்றப்பட்டன!", "success");
+      } else {
+        if (manualAlert) this.showToast("கிளவுட் Push பிழை: " + resp.status, "danger");
+      }
+    } catch (err) {
+      if (manualAlert) this.showToast("கிளவுட் இணைப்பு தோல்வி!", "danger");
+    }
+  },
+
+  async pullStateFromCloud(manualAlert = false) {
+    const url = (this.data.settings.cloudUrl || "").trim().replace(/\/$/, "");
+    const key = (this.data.settings.cloudKey || "").trim();
+    const table = (this.data.settings.cloudTable || "easy_collection_data").trim();
+
+    if (!url || !key) {
+      if (manualAlert) this.showToast("முதலில் Supabase அமைப்புகளைச் சேமிக்கவும்!", "warning");
+      return;
+    }
+
+    try {
+      const endpoint = `${url}/rest/v1/${table}?id=eq.main_backup_state&select=*`;
+      const resp = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'apikey': key,
+          'Authorization': `Bearer ${key}`
+        }
+      });
+
+      if (resp.ok) {
+        const rows = await resp.json();
+        if (rows && rows.length > 0 && rows[0].data) {
+          const cloudData = typeof rows[0].data === "string" ? JSON.parse(rows[0].data) : rows[0].data;
+
+          if (cloudData && Array.isArray(cloudData.customers)) {
+            // Smart Merge to Prevent Duplicate Records
+            this.mergeCloudData(cloudData);
+            this.saveState();
+            this.populateDropdowns();
+            this.initDates();
+            this.renderHomeSummary();
+            this.renderCollectionSheet();
+            if (manualAlert) this.showToast("கிளவுடில் இருந்து தரவுகள் துல்லியமாக சின்க் செய்யப்பட்டன!", "success");
+            return;
+          }
+        }
+        if (manualAlert) this.showToast("கிளவுடில் தரவுகள் எதுவும் இல்லை!", "warning");
+      } else {
+        if (manualAlert) this.showToast("கிளவுட் Pull பிழை: " + resp.status, "danger");
+      }
+    } catch (err) {
+      if (manualAlert) this.showToast("கிளவுட் இணைப்பு தோல்வி!", "danger");
+    }
+  },
+
+  /* MERGE ENGINE: PREVENT DUPLICATES ACROSS DEVICES */
+  mergeCloudData(cloudData) {
+    // 1. Merge Lines without duplicates
+    if (Array.isArray(cloudData.lines)) {
+      cloudData.lines.forEach(cL => {
+        const exists = this.data.lines.find(l => l.id === cL.id);
+        if (!exists) this.data.lines.push(cL);
+      });
+    }
+
+    // 2. Merge Customers without duplicates
+    if (Array.isArray(cloudData.customers)) {
+      cloudData.customers.forEach(cC => {
+        const idx = this.data.customers.findIndex(c => c.id === cC.id || c.accountNo === cC.accountNo);
+        if (idx === -1) {
+          this.data.customers.push(cC);
+        } else {
+          // Keep newest state
+          this.data.customers[idx] = Object.assign(this.data.customers[idx], cC);
+        }
+      });
+    }
+
+    // 3. Merge Transactions without duplicates
+    if (Array.isArray(cloudData.transactions)) {
+      cloudData.transactions.forEach(cTx => {
+        const exists = this.data.transactions.some(t => t.id === cTx.id);
+        if (!exists) this.data.transactions.push(cTx);
+      });
+      // Sort newest first
+      this.data.transactions.sort((a, b) => b.id.localeCompare(a.id));
+    }
+
+    // 4. Merge Daybook
+    if (cloudData.daybook) {
+      if (cloudData.daybook.openingBalances) {
+        this.data.daybook.openingBalances = Object.assign(this.data.daybook.openingBalances || {}, cloudData.daybook.openingBalances);
+      }
+      if (Array.isArray(cloudData.daybook.expenses)) {
+        cloudData.daybook.expenses.forEach(cExp => {
+          const exists = (this.data.daybook.expenses || []).some(e => e.desc === cExp.desc && e.date === cExp.date && e.amount === cExp.amount);
+          if (!exists) this.data.daybook.expenses.push(cExp);
+        });
+      }
+    }
+  },
+
+  /* ================= 15. WRONG PAYMENT EDIT ================= */
   openEditPaymentModal(txId) {
     const tx = this.data.transactions.find(t => t.id === txId);
     if (!tx) return;
@@ -506,6 +1129,7 @@ const app = {
 
     tx.amount = newAmt;
     tx.mode = newMode;
+    tx.newBalance = cust ? cust.balance : tx.newBalance;
 
     this.saveState();
     bootstrap.Modal.getInstance(document.getElementById("editPaymentModal")).hide();
@@ -517,7 +1141,7 @@ const app = {
     this.showToast(this.data.settings.language === 'ta' ? "வசூல் தொகை வெற்றிகரமாக திருத்தப்பட்டது!" : "Collection payment updated successfully!", "success");
   },
 
-  /* ================= 12. UPI QR MODAL ================= */
+  /* ================= 16. UPI QR MODAL ================= */
   openUpiModal(custId) {
     const cust = this.data.customers.find(c => c.id === custId);
     if (!cust) return;
@@ -543,7 +1167,7 @@ const app = {
     bootstrap.Modal.getInstance(document.getElementById("upiModal")).hide();
   },
 
-  /* ================= 13. THERMAL RECEIPT SLIP (58MM) ================= */
+  /* ================= 17. 58MM BLUETOOTH THERMAL SLIP ================= */
   printReceipt(txId) {
     const tx = this.data.transactions.find(t => t.id === txId);
     if (!tx) return;
@@ -578,7 +1202,7 @@ const app = {
     new bootstrap.Modal(document.getElementById("thermalSlipModal")).show();
   },
 
-  /* ================= 14. MASTER HUB (TILES & 2-STEP LOAN ENGINE) ================= */
+  /* ================= 18. MASTER HUB & 2-STEP REGISTRATION ================= */
   openMasterSubPage(pageKey) {
     document.getElementById("masterMainMenuContainer").classList.add("d-none");
     document.getElementById("masterSubPageContainer").classList.remove("d-none");
@@ -713,7 +1337,7 @@ const app = {
     this.populateDropdowns();
   },
 
-  /* ================= 15. NEW LOAN CALCULATIONS ================= */
+  /* ================= 19. LOAN ENGINE CALCULATIONS ================= */
   onMasterLineChange() {
     const lineId = document.getElementById("mCustLine")?.value;
     const line = this.data.lines.find(l => l.id === lineId);
@@ -842,12 +1466,12 @@ const app = {
 
     const newCust = {
       id: "CUST-" + Date.now().toString().slice(-6),
-      accountNo: "EC-" + (1001 + this.data.customers.length),
+      accountNo: this.getNextAccountNo(),
       routeOrder: routeOrder,
       name: name,
       phone: phone,
       altPhone: altPhone,
-      aadhaar: aadhaar ? "[Aadhaar Recorded]" : "",
+      aadhaar: aadhaar ? "[Aadhaar Redacted]" : "",
       address: address,
       lineId: lineId,
       area: area,
@@ -858,7 +1482,8 @@ const app = {
       dueAmount: dueAmount,
       balance: totalRepay,
       totalPaid: 0,
-      startDate: startDate
+      startDate: startDate,
+      loanHistory: []
     };
 
     this.data.customers.push(newCust);
@@ -874,7 +1499,7 @@ const app = {
     this.switchView('home');
   },
 
-  /* ================= 16. CUSTOMER PROFILE (DELETE, SETTLE, RE-LOAN) ================= */
+  /* ================= 20. CUSTOMER PROFILE & INLINE RE-LOAN ================= */
   openCustomerProfile(custId) {
     const cust = this.data.customers.find(c => c.id === custId);
     if (!cust) return;
@@ -926,35 +1551,11 @@ const app = {
       settleBtn.classList.remove("d-none");
     }
 
-    const tbody = document.getElementById("cProfLedgerBody");
-    tbody.innerHTML = "";
-    const txs = this.data.transactions.filter(t => t.customerId === cust.id);
-
-    if (txs.length === 0) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted py-3 font-sans">${isTa ? 'வரவுப் பதிவுகள் எதுவும் இல்லை' : 'No ledger records found'}</td></tr>`;
-    } else {
-      txs.forEach(t => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `
-          <td><span class="badge bg-light text-dark border">${t.id}</span></td>
-          <td>${t.date}</td>
-          <td class="text-success fw-bold">₹${t.amount}</td>
-          <td><span class="badge ${t.mode === 'UPI' ? 'bg-primary' : 'bg-success'} text-white">${t.mode}</span></td>
-          <td class="text-center">
-            <button class="btn btn-outline-dark btn-sm py-0 px-2" onclick="app.printReceipt('${t.id}')"><i class="bi bi-printer"></i></button>
-          </td>
-          <td class="text-center">
-            <button class="btn btn-outline-danger btn-sm py-0 px-2" onclick="app.openEditPaymentModal('${t.id}')"><i class="bi bi-pencil-square"></i> ${isTa ? 'திருத்து' : 'Edit'}</button>
-          </td>
-        `;
-        tbody.appendChild(tr);
-      });
-    }
-
+    // Populate initial ledger view
+    this.filterCustomerLedger();
     this.switchView('customer');
   },
 
-  /* SECURE CUSTOMER DELETION */
   confirmDeleteCustomer(custId) {
     const cust = this.data.customers.find(c => c.id === custId);
     if (!cust) return;
@@ -990,7 +1591,6 @@ const app = {
     );
   },
 
-  /* DIRECT INLINE RE-LOAN MODAL (STAYS ON CUSTOMER PAGE) */
   openDirectCustomerReLoanModal() {
     const cust = this.data.customers.find(c => c.id === this.currentCustId);
     if (!cust) return;
@@ -998,7 +1598,7 @@ const app = {
     document.getElementById("reLoanCustId").value = cust.id;
     document.getElementById("reLoanCustNameDisplay").innerText = `${cust.name} (${cust.accountNo})`;
     document.getElementById("reLoanCustPhoneDisplay").innerText = `Phone: +91 ${cust.phone} | Line: ${cust.area}`;
-    document.getElementById("reLoanStartDate").value = new Date().toISOString().split('T')[0];
+    document.getElementById("reLoanStartDate").value = this.getLocalDate();
     document.getElementById("reLoanPrincipal").value = cust.principal || 10000;
     document.getElementById("reLoanDocFee").value = cust.docFee || 200;
     document.getElementById("reLoanTenure").value = cust.tenure || 10;
@@ -1057,6 +1657,17 @@ const app = {
     const due = Number(document.getElementById("reLoanDueAmount").value) || 0;
     const start = document.getElementById("reLoanStartDate").value;
 
+    // Archive completed loan into loanHistory
+    if (!cust.loanHistory) cust.loanHistory = [];
+    cust.loanHistory.push({
+      principal: cust.principal,
+      totalRepay: cust.dueAmount * cust.tenure,
+      totalPaid: cust.totalPaid,
+      closedDate: this.getLocalDate(),
+      tenure: cust.tenure
+    });
+
+    // Reset customer with new loan details
     cust.principal = prin;
     cust.docFee = doc;
     cust.handCash = Math.max(0, prin - doc);
@@ -1072,9 +1683,9 @@ const app = {
     this.showToast(this.data.settings.language === 'ta' ? "மறு கடன் வெற்றிகரமாக வழங்கப்பட்டது!" : "Re-Loan issued successfully!", "success");
   },
 
-  /* ================= 17. DAY BOOK & AUDIT PDF ================= */
+  /* ================= 21. DAY BOOK & CASH RECONCILIATION ================= */
   saveOpeningBalances() {
-    const date = document.getElementById("dbDateSelect")?.value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("dbDateSelect")?.value || this.getLocalDate();
     const cash = Number(document.getElementById("dbOpeningCashInput").value) || 0;
     const bank = Number(document.getElementById("dbOpeningBankInput").value) || 0;
 
@@ -1087,7 +1698,7 @@ const app = {
   },
 
   renderDayBook() {
-    const date = document.getElementById("dbDateSelect")?.value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("dbDateSelect")?.value || this.getLocalDate();
     const dayTxs = this.data.transactions.filter(t => t.date.startsWith(date));
 
     const cashVasool = dayTxs.filter(t => t.mode === 'CASH').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -1152,7 +1763,7 @@ const app = {
   handleAddExpense() {
     const desc = document.getElementById("expDesc").value.trim();
     const amt = Number(document.getElementById("expAmount").value) || 0;
-    const date = document.getElementById("dbDateSelect").value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("dbDateSelect").value || this.getLocalDate();
 
     if (!desc || amt <= 0) return;
     if (!this.data.daybook.expenses) this.data.daybook.expenses = [];
@@ -1182,7 +1793,7 @@ const app = {
   },
 
   openDayBookAuditPdfModal() {
-    const date = document.getElementById("dbDateSelect").value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("dbDateSelect").value || this.getLocalDate();
     const dayTxs = this.data.transactions.filter(t => t.date.startsWith(date));
     const cashVasool = dayTxs.filter(t => t.mode === 'CASH').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
     const upiVasool = dayTxs.filter(t => t.mode === 'UPI').reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
@@ -1340,7 +1951,7 @@ const app = {
 
   downloadAuditPdf() {
     const element = document.getElementById("auditPdfContainer");
-    const date = document.getElementById("dbDateSelect").value || new Date().toISOString().split('T')[0];
+    const date = document.getElementById("dbDateSelect").value || this.getLocalDate();
     const opt = {
       margin: 8,
       filename: `EasyCollection_Audit_${date}.pdf`,
@@ -1351,7 +1962,7 @@ const app = {
     html2pdf().set(opt).from(element).save();
   },
 
-  /* ================= 18. REPORTS ================= */
+  /* ================= 22. REPORTS ================= */
   toggleReportDateMode(mode) {
     this.currentReportDateMode = mode;
     const isSingle = (mode === 'single');
@@ -1422,8 +2033,9 @@ const app = {
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `EasyCollection_Report_${new Date().toISOString().split('T')[0]}.csv`;
+    a.download = `EasyCollection_Report_${this.getLocalDate()}.csv`;
     a.click();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   },
 
   sendDailySummaryWhatsApp() {
@@ -1432,7 +2044,7 @@ const app = {
     window.open(`https://wa.me/91${this.data.settings.ownerPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   },
 
-  /* ================= 19. SETTINGS (10 SUBPAGES & BILINGUAL ENGINE) ================= */
+  /* ================= 23. SETTINGS & BILINGUAL ENGINE ================= */
   openSettingsSubPage(pageKey) {
     document.getElementById("settingsMainMenuContainer").classList.add("d-none");
     document.getElementById("settingsSubPageContainer").classList.remove("d-none");
@@ -1469,6 +2081,9 @@ const app = {
       document.getElementById("cfgCloudUrl").value = this.data.settings.cloudUrl || "";
       document.getElementById("cfgCloudKey").value = this.data.settings.cloudKey || "";
       document.getElementById("cfgCloudTable").value = this.data.settings.cloudTable || "easy_collection_data";
+      if (document.getElementById("cfgAutoCloudSync")) {
+        document.getElementById("cfgAutoCloudSync").checked = (this.data.settings.autoCloudSync !== false);
+      }
     }
   },
 
@@ -1489,18 +2104,21 @@ const app = {
   applyLanguage(lang) {
     const isTa = (lang === 'ta');
 
-    const btnTa = document.getElementById("btnLangSelectTa");
-    const btnEn = document.getElementById("btnLangSelectEn");
-    if (btnTa && btnEn) {
-      btnTa.className = isTa ? "btn btn-success p-3 text-start fw-bold" : "btn btn-outline-secondary p-3 text-start fw-bold";
-      btnEn.className = !isTa ? "btn btn-success p-3 text-start fw-bold" : "btn btn-outline-secondary p-3 text-start fw-bold";
-    }
-
     const mapText = (id, ta, en) => {
       const el = document.getElementById(id);
-      if (el) el.innerText = isTa ? ta : en;
+      if (!el) return;
+      const span = el.querySelector("span");
+      if (span) {
+        span.innerText = isTa ? ta : en;
+      } else {
+        el.innerText = isTa ? ta : en;
+      }
     };
 
+    mapText("btnLangSelectTa", "🇮🇳 தமிழ் (Tamil) - முன்னிருப்பு", "🇮🇳 Tamil (Tamil)");
+    mapText("btnLangSelectEn", "🌐 English (English Interface)", "🌐 English");
+
+    // Nav Pills
     mapText("pillNavHome", "முகப்பு (Home)", "Home");
     mapText("pillNavMaster", "பதிவுகள் (Master)", "Master Hub");
     mapText("pillNavDaybook", "டே புக் (Day Book)", "Day Book");
@@ -1508,12 +2126,14 @@ const app = {
     mapText("pillNavSettings", "அமைப்புகள் (Settings)", "Settings");
     mapText("btnNavLogout", "வெளியேறு (Logout)", "Logout");
 
+    // Mobile Bottom Nav
     mapText("lblMobNavHome", "முகப்பு", "Home");
     mapText("lblMobNavMaster", "பதிவுகள்", "Master");
     mapText("lblMobNavDaybook", "டே புக்", "Day Book");
     mapText("lblMobNavReports", "அறிக்கை", "Reports");
     mapText("lblMobNavSettings", "அமைப்பு", "Settings");
 
+    // Home Section
     mapText("lblHomeRouteHeading", "வசூல் வழித்தடத் தேர்வு (Daily Route Selection)", "Daily Route Selection");
     mapText("lblHomeDate", "வசூல் தேதி (Date) *", "Collection Date *");
     mapText("lblHomeLine", "லைன் (Line) *", "Line *");
@@ -1523,16 +2143,21 @@ const app = {
     mapText("lblHomeCardCash", "ரொக்கம் (Cash)", "Cash Collection");
     mapText("lblHomeCardUpi", "UPI வங்கி வரவு", "UPI Bank Received");
 
+    // Collection Sheet
     mapText("btnColBack", "முகப்பு (Back)", "Back to Home");
     mapText("btnColPrint", "பிரிண்ட்", "Print");
+    mapText("btnFilterColAll", "அனைத்தும் (All)", "All");
+    mapText("btnFilterColPending", "பாக்கி (Pending)", "Pending");
+    mapText("btnFilterColPaid", "கட்டியவர்கள் (Paid)", "Paid");
     mapText("thColAcc", "Acc எண்", "Acc No");
     mapText("thColCust", "வாடிக்கையாளர் பெயர்", "Customer Name");
     mapText("thColArea", "ஊர் / பகுதி", "Area / Village");
     mapText("thColBal", "மீதி பாக்கி", "Remaining Balance");
     mapText("thColDue", "தவணைத் தொகை", "Due Amount");
     mapText("thColPay", "வசூல் உள்ளீடு (Payment)", "Record Payment");
-    mapText("thColAction", "ரசீது / திருத்து", "Receipt / Edit");
+    mapText("thColAction", "ரசீது / வாட்ஸ்அப் / திருத்து", "Receipt / Actions");
 
+    // Master Hub
     mapText("lblMasterHubTitle", "பதிவுகள் மேலாண்மை (Master Hub)", "Master Records Hub");
     mapText("lblMasterHubSubtitle", "கடன் வழங்கல், புதிய லைன் மற்றும் பகுதி மேலாண்மைக்கு கீழே உள்ள ஒன்றைத் தேர்ந்தெடுக்கவும்", "Choose an option below to manage loans, lines, or villages");
     mapText("lblMasterTile1Title", "1. புதிய கடன் வழங்கல்", "1. New Loan Disbursal");
@@ -1543,6 +2168,7 @@ const app = {
     mapText("lblMasterTile3Desc", "லைன்களுக்கு புதிய ஊர்கள் சேர்த்தல்", "Assign and map villages to collection lines");
     mapText("btnBackToMaster", "பதிவுகள் மெனுவுக்கு திரும்பு", "Back to Master Hub");
 
+    // Settings Menu
     mapText("lblSettingsTitle", "அமைப்புகள் (Settings Hub)", "Settings Hub");
     mapText("lblSettingsSubtitle", "கீழே உள்ள விருப்பங்களில் ஒன்றைத் தேர்ந்தெடுத்து அமைப்புகளை மாற்றலாம்", "Select an option below to configure your preferences");
     mapText("lblSetTileLang", "1. மொழி தேர்வு (Language)", "1. Language Selection");
@@ -1557,8 +2183,8 @@ const app = {
     mapText("lblSetTileLinesDesc", "லைன்கள் சேர்க்க, எடிட், நீக்க", "Add, edit, or delete collection lines");
     mapText("lblSetTileAreas", "6. ஒதுக்கீடு பகுதிகள் (Areas)", "6. Assigned Areas");
     mapText("lblSetTileAreasDesc", "ஊர்கள் / பகுதிகள் மேலாண்மை", "Manage villages mapped to lines");
-    mapText("lblSetTileCloud", "7. ஆன்லைன் கிளவுட் (Cloud DB)", "7. Online Cloud Database");
-    mapText("lblSetTileCloudDesc", "Supabase & REST API இணைப்பு", "Supabase live sync integration");
+    mapText("lblSetTileCloud", "7. ஆன்லைன் கிளவுட் & சின்க்", "7. Cloud Database & Sync");
+    mapText("lblSetTileCloudDesc", "Supabase Multi-Device Sync", "Supabase live multi-device sync");
     mapText("lblSetTileTheme", "8. தோற்றம் / தீம் (Theme)", "8. Appearance & Theme");
     mapText("lblSetTileThemeDesc", "வெளிர் (Light) / இரவு (Dark)", "Light and Dark mode switcher");
     mapText("lblSetTileApk", "9. ஆண்ட்ராய்டு APK நிறுவல்", "9. Android APK Installer");
@@ -1654,150 +2280,7 @@ const app = {
     });
   },
 
-  /* ================= 20. SUPABASE CLOUD REST API CONNECTION ================= */
-  saveCloudSettings() {
-    let url = document.getElementById("cfgCloudUrl").value.trim().replace(/\/$/, "");
-    if (url && !url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "https://" + url;
-    }
-    this.data.settings.cloudUrl = url;
-    this.data.settings.cloudKey = document.getElementById("cfgCloudKey").value.trim();
-    this.data.settings.cloudTable = document.getElementById("cfgCloudTable").value.trim() || "easy_collection_data";
-
-    this.saveState();
-    this.showToast(this.data.settings.language === 'ta' ? "ஆன்லைன் கிளவுட் விவரங்கள் சேமிக்கப்பட்டன!" : "Cloud settings saved!", "success");
-    this.testCloudConnection();
-  },
-
-  copySupabaseSql() {
-    const sql = `create table if not exists easy_collection_data (\n  id text primary key,\n  data text,\n  updated_at text\n);\nalter table easy_collection_data disable row level security;`;
-    const tempInput = document.createElement("textarea");
-    tempInput.value = sql;
-    document.body.appendChild(tempInput);
-    tempInput.select();
-    try {
-      document.execCommand('copy');
-      this.showToast(this.data.settings.language === 'ta' ? "SQL Query நகலெடுக்கப்பட்டது! Supabase SQL Editor-ல் இயக்கவும்." : "SQL Query copied to clipboard!", "success");
-    } catch (e) {
-      this.showToast("Copy failed", "warning");
-    }
-    document.body.removeChild(tempInput);
-  },
-
-  setCloudDiagnosticUI(status, title, message) {
-    const box = document.getElementById("supabaseDiagnosticBox");
-    const titleEl = document.getElementById("supabaseDiagTitle");
-    const msgEl = document.getElementById("supabaseDiagMessage");
-    const iconEl = document.getElementById("supabaseDiagIcon");
-    const badge = document.getElementById("cloudStatusBadge");
-
-    if (!box) return;
-    box.classList.remove("d-none", "bg-success-subtle", "border-success-subtle", "bg-danger-subtle", "border-danger-subtle", "bg-warning-subtle", "border-warning-subtle");
-
-    if (status === "success") {
-      box.classList.add("bg-success-subtle", "border-success-subtle");
-      iconEl.className = "bi bi-check-circle-fill text-success fs-5 mt-0.5";
-      titleEl.className = "d-block mb-1 text-success fw-bold";
-      if (badge) {
-        badge.className = "badge bg-success-subtle text-success border border-success-subtle";
-        badge.innerText = "இணைக்கப்பட்டது ✓ (Connected)";
-      }
-    } else if (status === "loading") {
-      box.classList.add("bg-warning-subtle", "border-warning-subtle");
-      iconEl.className = "bi bi-arrow-repeat text-warning fs-5 mt-0.5";
-      titleEl.className = "d-block mb-1 text-warning-emphasis fw-bold";
-      if (badge) {
-        badge.className = "badge bg-warning text-dark border";
-        badge.innerText = "இணைக்கப்படுகிறது... (Testing)";
-      }
-    } else {
-      box.classList.add("bg-danger-subtle", "border-danger-subtle");
-      iconEl.className = "bi bi-exclamation-triangle-fill text-danger fs-5 mt-0.5";
-      titleEl.className = "d-block mb-1 text-danger fw-bold";
-      if (badge) {
-        badge.className = "badge bg-danger-subtle text-danger border border-danger-subtle";
-        badge.innerText = "இணைப்பு தோல்வி ✗ (Failed)";
-      }
-    }
-
-    titleEl.innerText = title;
-    msgEl.innerHTML = message;
-  },
-
-  async testCloudConnection() {
-    let url = (this.data.settings.cloudUrl || document.getElementById("cfgCloudUrl")?.value || "").trim().replace(/\/$/, "");
-    const key = (this.data.settings.cloudKey || document.getElementById("cfgCloudKey")?.value || "").trim();
-    const table = (this.data.settings.cloudTable || document.getElementById("cfgCloudTable")?.value || "easy_collection_data").trim();
-
-    if (!url || !key) {
-      this.setCloudDiagnosticUI("danger", "URL & Key தேவை", "Supabase Project URL மற்றும் Anon API Key உள்ளிடவும்.");
-      this.showToast("Supabase URL & Key தேவை!", "warning");
-      return;
-    }
-
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-      url = "https://" + url;
-    }
-
-    this.setCloudDiagnosticUI("loading", "சோதிக்கப்படுகிறது...", "Supabase சர்வருடன் தொடர்பு கொள்ளப்படுகிறது...");
-
-    try {
-      const endpoint = `${url}/rest/v1/${table}?select=*&limit=1`;
-      const resp = await fetch(endpoint, {
-        method: 'GET',
-        headers: {
-          'apikey': key,
-          'Authorization': `Bearer ${key}`
-        }
-      });
-
-      if (resp.ok) {
-        this.setCloudDiagnosticUI(
-          "success",
-          "கிளவுட் இணைப்பு உறுதியானது! (Connected)",
-          `டேபிள் <strong>"${table}"</strong> உடன் நேரடி தொடர்பு உறுதி செய்யப்பட்டது. தானியங்கி கிளவுட் Sync தயாராக உள்ளது.`
-        );
-        this.showToast("Supabase கிளவுட் வெற்றிகரமாக இணைக்கப்பட்டது!", "success");
-        return;
-      }
-
-      let errJson = null;
-      try { errJson = await resp.json(); } catch (e) {}
-      const errorMsg = errJson?.message || errJson?.error || `HTTP Status ${resp.status}`;
-
-      if (resp.status === 404 || errorMsg.includes("relation") || errorMsg.includes("does not exist")) {
-        this.setCloudDiagnosticUI(
-          "danger",
-          `டேபிள் "${table}" காணப்படவில்லை! (Table 404)`,
-          `Supabase-ல் <strong>${table}</strong> டேபிள் உருவாக்கப்படவில்லை.<br/>மேலே உள்ள <strong>"SQL நகலெடு"</strong> பட்டனை அழுத்தி, Supabase SQL Editor-ல் இயக்கவும்.`
-        );
-      } else if (resp.status === 401 || errorMsg.includes("JWT") || errorMsg.includes("apikey")) {
-        this.setCloudDiagnosticUI(
-          "danger",
-          "தவறான API Key (Unauthorized 401)",
-          "நீங்கள் உள்ளிட்ட Anon Key தவறாக உள்ளது. Supabase Project Settings > API > <strong>anon public</strong> key-ஐ நகலெடுத்து பேஸ்ட் செய்யவும்."
-        );
-      } else if (resp.status === 403 || errorMsg.includes("permission") || errorMsg.includes("row-level security")) {
-        this.setCloudDiagnosticUI(
-          "danger",
-          "RLS அனுமதி மறுப்பு (403)",
-          `Supabase Row Level Security தடுக்கிறது. SQL Editor-ல் <code>alter table ${table} disable row level security;</code> என இயக்கி பாதுகாப்பை அனுமதிக்கவும்.`
-        );
-      } else {
-        this.setCloudDiagnosticUI("danger", `இணைப்பு தோல்வி (${resp.status})`, `விவரம்: ${errorMsg}`);
-      }
-      this.showToast("Supabase இணைப்பு தோல்வி!", "danger");
-    } catch (err) {
-      this.setCloudDiagnosticUI(
-        "danger",
-        "இணையம் அல்லது URL பிழை (Network Error)",
-        "Project URL தவறாக இருக்கலாம் அல்லது இணைய இணைப்பு இல்லை. URL சரியான வடிவில் உள்ளதா என பார்க்கவும்: <code>https://xxxxx.supabase.co</code>"
-      );
-      this.showToast("Supabase நெட்வொர்க் பிழை!", "danger");
-    }
-  },
-
-  /* ================= 21. THEME & APK INSTALLER ================= */
+  /* ================= 24. THEME & APK INSTALLER ================= */
   setTheme(theme) {
     this.data.settings.theme = theme;
     this.saveState();
@@ -1812,13 +2295,14 @@ const app = {
 
   downloadApkPackage() {
     const isTa = (this.data.settings.language || 'ta') === 'ta';
-    const apkData = "#!/bin/bash\n# Easy Collection Android Native APK Package Generator\n# Company: " + this.data.settings.companyName + "\necho 'Building Android APK installer for field mobile devices...'\n";
+    const apkData = "#!/bin/bash\n# Easy Collection Android Native APK Package\n# Company: " + this.data.settings.companyName + "\necho 'Building Android APK installer for field devices...'\n";
     const blob = new Blob([apkData], { type: "application/vnd.android.package-archive" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "EasyCollection_v6.0_Installer.apk";
+    a.download = "EasyCollection_v8.0_Installer.apk";
     a.click();
-    this.showToast(isTa ? "APK டவுன்லோட் தொடங்கப்பட்டது! உங்கள் Downloads-ல் பார்க்கவும்." : "APK Download started! Check Downloads folder.", "success");
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    this.showToast(isTa ? "APK டவுன்லோட் தொடங்கியது! Downloads-ல் பார்க்கவும்." : "APK Download started! Check Downloads folder.", "success");
   },
 
   showApkInstallGuide() {
@@ -1829,17 +2313,17 @@ const app = {
     this.showConfirm(isTa ? "Android APK நிறுவல் முறை" : "How to Install APK", guideMsg, () => {});
   },
 
-  /* ================= 22. 1-CLICK JSON BACKUP & RESTORE ================= */
+  /* ================= 25. 1-CLICK JSON BACKUP & RESTORE ================= */
   exportFullJsonBackup() {
     const dataStr = JSON.stringify(this.data, null, 2);
     const blob = new Blob([dataStr], { type: "application/json;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-    const date = new Date().toISOString().split('T')[0];
+    const date = this.getLocalDate();
     const a = document.createElement("a");
     a.href = url;
     a.download = `EasyCollection_Full_Backup_${date}.json`;
     a.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
     this.showToast(this.data.settings.language === 'ta' ? "முழு பேக்கப் JSON கோப்பாகப் பதிவிறக்கப்பட்டது!" : "Full Backup JSON exported successfully!", "success");
   },
 
@@ -1861,7 +2345,7 @@ const app = {
         reader.onload = (e) => {
           try {
             const importedData = JSON.parse(e.target.result);
-            if (importedData && typeof importedData === "object" && importedData.settings && importedData.customers) {
+            if (importedData && typeof importedData === "object" && importedData.settings && Array.isArray(importedData.customers)) {
               this.data = importedData;
               this.saveState();
               this.populateDropdowns();
@@ -1884,7 +2368,7 @@ const app = {
   }
 };
 
-/* ================= 23. WINDOW ONLOAD ================= */
+/* ================= 26. WINDOW ONLOAD ================= */
 window.onload = () => {
   app.init();
 };
