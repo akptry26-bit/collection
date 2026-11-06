@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ta">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
@@ -20,7 +20,7 @@
   <!-- QRCode.js -->
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 
-  <!-- html2pdf.js for Audit PDF Generation -->
+  <!-- html2pdf.js for Receipt & Audit PDF Generation -->
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
 </head>
 <body>
@@ -47,7 +47,7 @@
         </div>
 
         <button type="submit" class="btn btn-emerald w-100 py-2.5 mb-2 fw-bold" id="btnLoginSubmit">
-          <i class="bi bi-box-arrow-in-right me-1"></i> <span>உள்நுழைக (Login)</span>
+          <i class="bi bi-box-arrow-in-right me-1"></i><span>உள்நுழைக (Login)</span>
         </button>
 
         <button type="button" class="btn btn-outline-success w-100 py-2 d-flex align-items-center justify-content-center gap-2" onclick="app.handleBiometricLogin()" id="btnBiometricLogin">
@@ -70,7 +70,10 @@
           </div>
           <div>
             <h6 class="fw-bold mb-0 text-dark leading-tight" style="font-size: 16px;">Easy Collection</h6>
-            <small class="text-success fw-bold d-block leading-none" style="font-size: 11px;">Micro Finance</small>
+            <div class="d-flex align-items-center gap-1.5">
+              <small class="text-success fw-bold leading-none" style="font-size: 11px;">Micro Finance</small>
+              <span class="badge bg-secondary-subtle text-secondary font-mono px-1.5 py-0.5" id="headerCloudSyncBadge" style="font-size: 9.5px;" title="Cloud Status">Offline</span>
+            </div>
           </div>
         </div>
 
@@ -198,7 +201,7 @@
         </div>
       </section>
 
-      <!-- ================= 2. COLLECTION SHEET VIEW (WITH OVERDUE & BACKDATE & SERIAL SORT) ================= -->
+      <!-- ================= 2. COLLECTION SHEET VIEW ================= -->
       <section id="view_collection" class="page-view d-none">
         
         <!-- Header & Action Ribbon -->
@@ -214,7 +217,7 @@
           </div>
 
           <div class="d-flex align-items-center gap-2 flex-wrap">
-            <!-- BACKDATED ENTRY PICKER -->
+            <!-- BACKDATED / EFFECTIVE DATE PICKER -->
             <div class="d-flex align-items-center gap-1 bg-white p-1 rounded border shadow-2xs">
               <span class="small fw-bold text-muted ps-1" style="font-size: 11px;">
                 <i class="bi bi-calendar-check text-emerald me-1"></i>தேதி:
@@ -237,11 +240,11 @@
           </div>
         </div>
 
-        <!-- Filter Pills: ALL / PENDING / PAID / DEFAULTERS (OVERDUE) -->
+        <!-- Filter Pills -->
         <div class="d-flex gap-2 mb-3 flex-wrap align-items-center">
-          <button class="btn btn-sm btn-outline-secondary active px-3" id="btnFilterColAll" onclick="app.setCollectionFilter('ALL')">அனைத்தும் (All)</button>
-          <button class="btn btn-sm btn-outline-danger px-3" id="btnFilterColPending" onclick="app.setCollectionFilter('PENDING')">பாக்கி (Pending)</button>
-          <button class="btn btn-sm btn-outline-success px-3" id="btnFilterColPaid" onclick="app.setCollectionFilter('PAID')">கட்டியவர்கள் (Paid)</button>
+          <button class="btn btn-sm btn-outline-secondary active px-3" id="btnFilterColAll" onclick="app.setCollectionFilter('ALL')"><span>அனைத்தும் (All)</span></button>
+          <button class="btn btn-sm btn-outline-danger px-3" id="btnFilterColPending" onclick="app.setCollectionFilter('PENDING')"><span>பாக்கி (Pending)</span></button>
+          <button class="btn btn-sm btn-outline-success px-3" id="btnFilterColPaid" onclick="app.setCollectionFilter('PAID')"><span>கட்டியவர்கள் (Paid)</span></button>
           
           <!-- Defaulters / Overdue Filter Button -->
           <button class="btn btn-sm btn-outline-warning text-dark fw-bold px-3 d-flex align-items-center gap-1" id="btnFilterColOverdue" onclick="app.setCollectionFilter('OVERDUE')">
@@ -251,7 +254,7 @@
           </button>
         </div>
 
-        <!-- Customer Collection Table with Route Serial Sequence -->
+        <!-- Customer Collection Table -->
         <div class="table-container app-card">
           <table class="table table-hover table-custom mb-0 font-mono">
             <thead>
@@ -263,7 +266,7 @@
                 <th class="text-end" id="thColBal">மீதி பாக்கி</th>
                 <th class="text-end" id="thColDue">தவணைத் தொகை</th>
                 <th class="text-center" style="width: 260px;" id="thColPay">வசூல் உள்ளீடு (Payment)</th>
-                <th class="text-center" style="width: 140px;" id="thColAction">ரசீது / திருத்து</th>
+                <th class="text-center" style="width: 160px;" id="thColAction">ரசீது / வாட்ஸ்அப் / திருத்து</th>
               </tr>
             </thead>
             <tbody id="collectionTableBody">
@@ -273,10 +276,10 @@
         </div>
       </section>
 
-      <!-- ================= 3. MASTER HUB (TILES LIKE SETTINGS) ================= -->
+      <!-- ================= 3. MASTER HUB ================= -->
       <section id="view_master" class="page-view d-none">
         
-        <!-- 3A: MASTER MAIN MENU (GRID TILES) -->
+        <!-- 3A: MASTER MAIN MENU -->
         <div id="masterMainMenuContainer">
           <div class="mb-3">
             <h4 class="fw-bold mb-0 text-dark" id="lblMasterHubTitle"><i class="bi bi-plus-square-fill text-success me-2"></i>பதிவுகள் மேலாண்மை (Master Hub)</h4>
@@ -342,7 +345,7 @@
             </span>
           </div>
 
-          <!-- SUBPAGE 1: NEW LOAN DISBURSAL (2-STEP WORKFLOW WITH ROUTE SERIAL) -->
+          <!-- SUBPAGE 1: NEW LOAN DISBURSAL -->
           <div id="masterSub_loan" class="master-subpage d-none">
             <form onsubmit="event.preventDefault(); app.handleDisburseNewLoan();">
               
@@ -560,7 +563,7 @@
             </form>
           </div>
 
-          <!-- SUBPAGE 2: NEW LINE (SUNDAY TO SATURDAY PICKER) -->
+          <!-- SUBPAGE 2: NEW LINE -->
           <div id="masterSub_line" class="master-subpage d-none">
             <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
               <h5 class="fw-bold mb-3 text-dark" id="lblAddLineHeading"><i class="bi bi-signpost-split text-success me-2"></i>புதிய லைன் சேர்க்க (Add New Line)</h5>
@@ -603,7 +606,7 @@
                   <input type="number" class="form-control font-mono" id="lineTargetInput" value="25000" />
                 </div>
 
-                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveLineSubmit">லைனைச் சேமிக்கவும்</button>
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveLineSubmit"><span>லைனைச் சேமிக்கவும்</span></button>
               </form>
             </div>
           </div>
@@ -632,7 +635,7 @@
                   <input type="text" class="form-control" id="newAreaNameInput" placeholder="புதிய ஊர் பெயர் உள்ளிடவும்" required />
                 </div>
                 <div class="col-4">
-                  <button type="submit" class="btn btn-emerald w-100" id="btnAddAreaSubmit">ஊரைச் சேர்</button>
+                  <button type="submit" class="btn btn-emerald w-100" id="btnAddAreaSubmit"><span>ஊரைச் சேர்</span></button>
                 </div>
               </form>
             </div>
@@ -641,16 +644,19 @@
 
       </section>
 
-      <!-- ================= 4. CUSTOMER PROFILE VIEW (WITH DELETE & RE-LOAN & ROUTE SERIAL) ================= -->
+      <!-- ================= 4. CUSTOMER PROFILE & ADVANCED LEDGER VIEW ================= -->
       <section id="view_customer" class="page-view d-none">
         
-        <!-- Top Back Navigation & Action Buttons -->
         <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
           <button class="btn btn-outline-secondary btn-sm px-3" onclick="app.switchView('collection')" id="btnCustProfileBack">
             <i class="bi bi-arrow-left me-1"></i><span>வசூல் பட்டியலுக்கு திரும்பு</span>
           </button>
           
           <div class="d-flex gap-2 align-items-center" id="cProfActionButtonsBox">
+            <!-- WHATSAPP REMINDER BUTTON DIRECT FROM PROFILE -->
+            <button class="btn btn-outline-success btn-sm px-3 fw-bold" onclick="app.openWhatsappReminderModal(app.currentCustId)">
+              <i class="bi bi-whatsapp me-1"></i><span>நினைவூட்டல் (Reminder)</span>
+            </button>
             <button class="btn btn-outline-danger btn-sm px-3 fw-bold" id="cProfFullSettleBtn" onclick="app.confirmFullSettleCustomer()">
               <i class="bi bi-check2-all me-1"></i><span>முழு கடன் தீர்வு (Full Settle)</span>
             </button>
@@ -658,7 +664,7 @@
               <i class="bi bi-arrow-repeat me-1"></i><span>மறு கடன் வழங்குக (Issue Re-Loan)</span>
             </button>
 
-            <!-- CUSTOMER DELETE OPTION (WITH SECURE IN-APP CONFIRMATION) -->
+            <!-- CUSTOMER DELETE OPTION -->
             <button class="btn btn-outline-danger btn-sm px-2.5" onclick="app.confirmDeleteCustomer(app.currentCustId)" title="வாடிக்கையாளரை நிரந்தரமாக நீக்குக">
               <i class="bi bi-trash3-fill"></i>
             </button>
@@ -763,9 +769,49 @@
           </div>
         </div>
 
-        <!-- Ledger Table -->
-        <div class="app-card p-3">
-          <h6 class="fw-bold text-secondary mb-3" id="lblProfLedgerTitle"><i class="bi bi-clock-history me-1 text-success"></i>வரவுப் பதிவுகள் (Ledger History)</h6>
+        <!-- ================= COMPLETE CUSTOMER LEDGER STATEMENT ================= -->
+        <div class="app-card p-3 mb-3">
+          <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3 border-bottom pb-2">
+            <div>
+              <h6 class="fw-bold text-dark mb-0" id="lblProfLedgerTitle">
+                <i class="bi bi-journal-text me-1 text-success"></i>முழு கணக்கு அறிக்கை (Customer Ledger Statement)
+              </h6>
+              <small class="text-muted">வரவு பதிவுகள், ஆரம்ப இருப்பு மற்றும் கடன் வரலாறு</small>
+            </div>
+
+            <!-- Ledger Date Filters & Export PDF -->
+            <div class="d-flex align-items-center gap-2 flex-wrap">
+              <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text bg-light font-sans text-xs">From</span>
+                <input type="date" id="cProfLedgerFromDate" class="form-control form-control-sm font-mono" onchange="app.filterCustomerLedger()" />
+              </div>
+              <div class="input-group input-group-sm" style="width: auto;">
+                <span class="input-group-text bg-light font-sans text-xs">To</span>
+                <input type="date" id="cProfLedgerToDate" class="form-control form-control-sm font-mono" onchange="app.filterCustomerLedger()" />
+              </div>
+              <button class="btn btn-outline-danger btn-sm fw-bold px-3" onclick="app.downloadCustomerLedgerPdf()">
+                <i class="bi bi-file-earmark-pdf-fill me-1"></i>Ledger PDF
+              </button>
+            </div>
+          </div>
+
+          <!-- Ledger Summary Ribbon (Opening, Paid, Closing) -->
+          <div class="row g-2 mb-3 text-center font-mono">
+            <div class="col-4 p-2 bg-light rounded border">
+              <small class="text-muted font-sans d-block" style="font-size: 11px;">ஆரம்ப கடன் பொறுப்பு (Opening)</small>
+              <strong class="text-dark fs-6" id="cProfLedgerOpening">₹0</strong>
+            </div>
+            <div class="col-4 p-2 bg-success-subtle rounded border border-success-subtle">
+              <small class="text-success font-sans d-block" style="font-size: 11px;">செலுத்திய தொகை (Total Credits)</small>
+              <strong class="text-success fs-6" id="cProfLedgerCredits">₹0</strong>
+            </div>
+            <div class="col-4 p-2 bg-danger-subtle rounded border border-danger-subtle">
+              <small class="text-danger font-sans d-block" style="font-size: 11px;">தற்போதைய நிலுவை (Closing Balance)</small>
+              <strong class="text-danger fs-6" id="cProfLedgerClosing">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Ledger Table -->
           <div class="table-responsive">
             <table class="table table-hover align-middle mb-0 font-mono text-sm">
               <thead class="bg-light text-secondary">
@@ -774,16 +820,17 @@
                   <th id="thLedgerDateTime">தேதி & நேரம்</th>
                   <th id="thLedgerAmount">கட்டிய தொகை</th>
                   <th id="thLedgerMode">முறை</th>
-                  <th class="text-center" id="thLedgerPrint">ரசீது</th>
+                  <th class="text-center" id="thLedgerPrint">ரசீது (PDF / Print)</th>
                   <th class="text-center" id="thLedgerEdit">தொகை திருத்து</th>
                 </tr>
               </thead>
               <tbody id="cProfLedgerBody">
-                <!-- Ledger entries -->
+                <!-- Ledger entries dynamically populated -->
               </tbody>
             </table>
           </div>
         </div>
+
       </section>
 
       <!-- ================= 5. DAY BOOK VIEW ================= -->
@@ -906,7 +953,7 @@
                 <input type="number" class="form-control form-control-sm font-mono" id="expAmount" placeholder="தொகை ₹" min="1" required />
               </div>
               <div class="col-2 col-md-2">
-                <button type="submit" class="btn btn-danger btn-sm w-100" id="btnDbSubmitExp">பதிவு</button>
+                <button type="submit" class="btn btn-danger btn-sm w-100" id="btnDbSubmitExp"><span>பதிவு</span></button>
               </div>
             </form>
           </div>
@@ -940,10 +987,10 @@
             
             <div class="d-flex gap-2">
               <button class="btn btn-outline-success btn-sm px-3" onclick="app.exportReportsCSV()" id="btnRepExportCsv">
-                <i class="bi bi-filetype-csv me-1"></i>CSV பதிவிறக்கம்
+                <i class="bi bi-filetype-csv me-1"></i><span>CSV பதிவிறக்கம்</span>
               </button>
               <button class="btn btn-outline-dark btn-sm px-3" onclick="window.print()" id="btnRepPrint">
-                <i class="bi bi-printer me-1"></i>அச்சு (Print)
+                <i class="bi bi-printer me-1"></i><span>அச்சு (Print)</span>
               </button>
             </div>
           </div>
@@ -1029,7 +1076,7 @@
         </div>
       </section>
 
-      <!-- ================= 7. SETTINGS VIEW (WITH 1-CLICK BACKUP/RESTORE TILE) ================= -->
+      <!-- ================= 7. SETTINGS VIEW ================= -->
       <section id="view_settings" class="page-view d-none">
         
         <!-- 7A: SETTINGS MAIN MENU (GRID TILES) -->
@@ -1118,13 +1165,14 @@
               </div>
             </div>
 
+            <!-- TILE 7: CLOUD BACKUP & MULTI-DEVICE SYNC -->
             <div class="col-12 col-md-6 col-lg-4">
-              <div class="setting-menu-tile" onclick="app.openSettingsSubPage('cloud')">
+              <div class="setting-menu-tile border-success-subtle" onclick="app.openSettingsSubPage('cloud')">
                 <div class="d-flex align-items-center gap-3">
                   <div class="tile-icon bg-emerald-subtle text-success"><i class="bi bi-cloud-arrow-up-fill fs-4"></i></div>
                   <div>
-                    <strong class="d-block text-dark" id="lblSetTileCloud">7. ஆன்லைன் கிளவுட் (Cloud DB)</strong>
-                    <small class="text-muted" id="lblSetTileCloudDesc">Supabase & REST API இணைப்பு</small>
+                    <strong class="d-block text-dark" id="lblSetTileCloud">7. ஆன்லைன் கிளவுட் & சின்க்</strong>
+                    <small class="text-muted" id="lblSetTileCloudDesc">Supabase Multi-Device Sync</small>
                   </div>
                 </div>
                 <i class="bi bi-chevron-right text-muted"></i>
@@ -1190,10 +1238,10 @@
               <h5 class="fw-bold mb-3" id="lblSubLangHeading">மொழி தேர்வு (Language Selection)</h5>
               <div class="d-grid gap-2">
                 <button class="btn btn-success p-3 text-start fw-bold" id="btnLangSelectTa" onclick="app.setLanguage('ta')">
-                  <i class="bi bi-check-circle-fill me-2"></i>🇮🇳 தமிழ் (Tamil) - முன்னிருப்பு
+                  <i class="bi bi-check-circle-fill me-2"></i><span>🇮🇳 தமிழ் (Tamil) - முன்னிருப்பு</span>
                 </button>
                 <button class="btn btn-outline-secondary p-3 text-start fw-bold" id="btnLangSelectEn" onclick="app.setLanguage('en')">
-                  🌐 English (English Interface)
+                  <span>🌐 English (English Interface)</span>
                 </button>
               </div>
             </div>
@@ -1220,7 +1268,7 @@
                   <label class="form-label small fw-bold text-secondary" id="lblProfileOwnerPhone">உரிமையாளர் WhatsApp எண் *</label>
                   <input type="tel" class="form-control font-mono" id="cfgOwnerPhone" value="9842100000" maxlength="10" required />
                 </div>
-                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveProfile">சுயவிவரம் சேமிக்கவும்</button>
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSaveProfile"><span>சுயவிவரம் சேமிக்கவும்</span></button>
               </form>
             </div>
           </div>
@@ -1238,7 +1286,7 @@
                   <label class="form-label small fw-bold text-secondary" id="lblNewPass">புதிய கடவுச்சொல் (New PIN) *</label>
                   <input type="password" class="form-control font-mono text-center fs-5" id="cfgNewPass" minlength="4" required />
                 </div>
-                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSubmitNewPass">PIN மாற்றுக</button>
+                <button type="submit" class="btn btn-emerald w-100 py-2.5 fw-bold" id="btnSubmitNewPass"><span>PIN மாற்றுக</span></button>
               </form>
             </div>
           </div>
@@ -1298,14 +1346,18 @@
             </div>
           </div>
 
-          <!-- Subpage 7: Cloud -->
+          <!-- Subpage 7: Cloud & Multi-Device Synchronization -->
           <div id="subpage_cloud" class="settings-subpage d-none">
             <div class="app-card p-3 p-md-4 max-w-xl mx-auto">
               <div class="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Supabase / REST API கிளவுட்</h5>
+                <div>
+                  <h5 class="fw-bold mb-0 text-success"><i class="bi bi-cloud-arrow-up-fill me-2"></i>Supabase Cloud Sync</h5>
+                  <small class="text-muted">Multi-Device Real-Time Synchronization</small>
+                </div>
                 <span class="badge bg-light text-secondary border font-mono" id="cloudStatusBadge">இணைக்கப்படவில்லை</span>
               </div>
 
+              <!-- Diagnostic status alert banner -->
               <div id="supabaseDiagnosticBox" class="p-3 rounded mb-3 border d-none">
                 <div class="d-flex align-items-start gap-2">
                   <i class="bi bi-info-circle-fill fs-5 mt-0.5" id="supabaseDiagIcon"></i>
@@ -1337,10 +1389,36 @@
                   <label class="form-label small fw-bold text-secondary">டேபிள் பெயர் (Table Name)</label>
                   <input type="text" class="form-control font-mono" id="cfgCloudTable" value="easy_collection_data" />
                 </div>
+
+                <div class="p-2.5 rounded bg-light border mb-3">
+                  <div class="form-check form-switch mb-0 d-flex align-items-center justify-content-between ps-0">
+                    <label class="form-check-label small fw-bold text-dark cursor-pointer" for="cfgAutoCloudSync">
+                      <i class="bi bi-arrow-repeat text-success me-1"></i>தானியங்கி கிளவுட் சின்க் (Auto Sync on Payment)
+                    </label>
+                    <input class="form-check-input ms-2" type="checkbox" id="cfgAutoCloudSync" checked />
+                  </div>
+                </div>
                 
-                <div class="d-flex gap-2">
-                  <button type="submit" class="btn btn-emerald flex-fill py-2 fw-bold" id="btnSaveCloud">சேமிக்கவும்</button>
-                  <button type="button" class="btn btn-outline-primary flex-fill py-2" onclick="app.testCloudConnection()" id="btnTestCloud">சோதிக்க (Test)</button>
+                <div class="row g-2 mb-2">
+                  <div class="col-6">
+                    <button type="submit" class="btn btn-emerald w-100 py-2 fw-bold" id="btnSaveCloud"><span>சேமிக்கவும்</span></button>
+                  </div>
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-primary w-100 py-2" onclick="app.testCloudConnection()" id="btnTestCloud"><span>சோதிக்க (Test)</span></button>
+                  </div>
+                </div>
+
+                <div class="row g-2 pt-2 border-top">
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-success w-100 py-1.5 btn-sm fw-bold" onclick="app.pushStateToCloud(true)">
+                      <i class="bi bi-cloud-arrow-up me-1"></i><span>கிளவுடில் ஏற்று (Push)</span>
+                    </button>
+                  </div>
+                  <div class="col-6">
+                    <button type="button" class="btn btn-outline-dark w-100 py-1.5 btn-sm fw-bold" onclick="app.pullStateFromCloud(true)">
+                      <i class="bi bi-cloud-arrow-down me-1"></i><span>கிளவுடில் இறக்கு (Pull)</span>
+                    </button>
+                  </div>
                 </div>
               </form>
             </div>
@@ -1352,10 +1430,10 @@
               <h5 class="fw-bold mb-3" id="lblSubThemeHeading">தோற்றம் / தீம் தேர்வு</h5>
               <div class="d-flex justify-content-center gap-3">
                 <button class="btn btn-outline-dark p-3 px-4 fw-bold" onclick="app.setTheme('light')" id="btnThemeLight">
-                  <i class="bi bi-sun-fill fs-3 d-block mb-1 text-warning"></i>வெளிர் (Light)
+                  <i class="bi bi-sun-fill fs-3 d-block mb-1 text-warning"></i><span>வெளிர் (Light)</span>
                 </button>
                 <button class="btn btn-dark p-3 px-4 fw-bold" onclick="app.setTheme('dark')" id="btnThemeDark">
-                  <i class="bi bi-moon-stars-fill fs-3 d-block mb-1 text-info"></i>இரவு (Dark)
+                  <i class="bi bi-moon-stars-fill fs-3 d-block mb-1 text-info"></i><span>இரவு (Dark)</span>
                 </button>
               </div>
             </div>
@@ -1372,10 +1450,10 @@
               
               <div class="d-grid gap-2 mb-3">
                 <button class="btn btn-emerald py-2.5 fw-bold" onclick="app.downloadApkPackage()" id="btnDownloadApk">
-                  <i class="bi bi-download me-1"></i> <span>APK டவுன்லோட் (Download APK)</span>
+                  <i class="bi bi-download me-1"></i><span>APK டவுன்லோட் (Download APK)</span>
                 </button>
                 <button class="btn btn-outline-secondary py-2" onclick="app.showApkInstallGuide()" id="btnApkGuide">
-                  <i class="bi bi-info-circle me-1"></i> <span>நிறுவல் வழிகாட்டி (How to Install)</span>
+                  <i class="bi bi-info-circle me-1"></i><span>நிறுவல் வழிகாட்டி (How to Install)</span>
                 </button>
               </div>
             </div>
@@ -1395,7 +1473,7 @@
                     <small class="text-muted">அனைத்து வாடிக்கையாளர் மற்றும் வசூல் தகவல்களையும் JSON கோப்பாகச் சேமிக்கும்.</small>
                   </div>
                   <button type="button" class="btn btn-emerald px-3 py-2 fw-bold" onclick="app.exportFullJsonBackup()">
-                    <i class="bi bi-cloud-arrow-down-fill me-1"></i>பேக்கப் எடு (Download)
+                    <i class="bi bi-cloud-arrow-down-fill me-1"></i><span>பேக்கப் எடு (Download)</span>
                   </button>
                 </div>
               </div>
@@ -1408,7 +1486,7 @@
                 <div class="input-group">
                   <input type="file" class="form-control" id="importJsonFileInput" accept=".json" />
                   <button class="btn btn-primary fw-bold px-3" type="button" onclick="app.importFullJsonBackup()">
-                    <i class="bi bi-arrow-clockwise me-1"></i>மீட்டெடு (Restore)
+                    <i class="bi bi-arrow-clockwise me-1"></i><span>மீட்டெடு (Restore)</span>
                   </button>
                 </div>
               </div>
@@ -1448,7 +1526,104 @@
 
   <!-- ================= MODALS & POPUPS ================= -->
 
-  <!-- MODAL: INLINE DIRECT CUSTOMER RE-LOAN -->
+  <!-- MODAL 1: WHATSAPP REMINDER TEMPLATE CUSTOMIZER -->
+  <div class="modal fade" id="whatsappReminderModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 480px;">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-1">
+          <div>
+            <h5 class="modal-title fw-bold text-success mb-0">
+              <i class="bi bi-whatsapp me-2"></i>வாட்ஸ்அப் நினைவூட்டல் (WhatsApp Reminder)
+            </h5>
+            <small class="text-muted">Send due payment reminder to customer</small>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body py-2">
+          <input type="hidden" id="waRemindCustId" />
+
+          <!-- Template Language Selector -->
+          <div class="mb-2">
+            <label class="form-label small fw-bold text-secondary mb-1">செய்தி வார்ப்புரு (Template Language):</label>
+            <div class="btn-group w-100">
+              <input type="radio" class="btn-check" name="waTemplateLang" id="waLangTa" autocomplete="off" checked onchange="app.renderWhatsappReminderMessage('ta')" />
+              <label class="btn btn-outline-success btn-sm fw-bold" for="waLangTa">தமிழ் (Tamil)</label>
+
+              <input type="radio" class="btn-check" name="waTemplateLang" id="waLangEn" autocomplete="off" onchange="app.renderWhatsappReminderMessage('en')" />
+              <label class="btn btn-outline-success btn-sm fw-bold" for="waLangEn">English</label>
+            </div>
+          </div>
+
+          <!-- Customer details summary badge -->
+          <div class="p-2.5 rounded bg-light border mb-2 font-mono text-xs">
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-muted font-sans">வாடிக்கையாளர்:</span>
+              <strong class="text-dark" id="waRemindCustName">-</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-1">
+              <span class="text-muted font-sans">தவணைத் தொகை:</span>
+              <strong class="text-danger" id="waRemindCustDue">₹0</strong>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted font-sans">மீதி பாக்கி:</span>
+              <strong class="text-dark" id="waRemindCustBalance">₹0</strong>
+            </div>
+          </div>
+
+          <!-- Editable Message Preview -->
+          <div class="mb-3">
+            <label class="form-label small fw-bold text-secondary mb-1">செய்தி முன்னோட்டம் (Message Preview):</label>
+            <textarea class="form-control font-sans text-xs" id="waRemindMessageText" rows="6"></textarea>
+          </div>
+        </div>
+        <div class="modal-footer border-0 pt-0 d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal"><span>ரத்து</span></button>
+          <button type="button" class="btn btn-emerald w-50 fw-bold" onclick="app.launchWhatsappReminder()">
+            <i class="bi bi-whatsapp me-1"></i><span>அனுப்புக (Send)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 2: AUTOMATIC & DOWNLOADABLE PDF PAYMENT RECEIPT -->
+  <div class="modal fade" id="paymentReceiptPdfModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width: 440px;">
+      <div class="modal-content app-card p-3">
+        <div class="modal-header border-0 pb-1">
+          <div>
+            <h5 class="modal-title fw-bold text-dark mb-0">
+              <i class="bi bi-receipt text-success me-2"></i>கட்டண ரசீது (Payment Receipt)
+            </h5>
+            <span class="badge bg-success-subtle text-success border border-success-subtle font-mono text-xs" id="pdfReceiptBadgeNo">REC-000000</span>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        
+        <div class="modal-body p-2 bg-light rounded my-2">
+          <!-- Renderable Clean Receipt Container -->
+          <div id="renderablePdfReceiptContainer" class="p-3 bg-white border rounded shadow-2xs">
+            <!-- Dynamic Receipt populated by JS -->
+          </div>
+        </div>
+
+        <div class="modal-footer border-0 pt-1 d-flex gap-2">
+          <button type="button" class="btn btn-outline-secondary flex-fill btn-sm" data-bs-dismiss="modal">மூடுக</button>
+          <button type="button" class="btn btn-outline-success flex-fill btn-sm fw-bold" onclick="app.shareReceiptWhatsapp()">
+            <i class="bi bi-whatsapp me-1"></i>வாட்ஸ்அப்
+          </button>
+          <button type="button" class="btn btn-dark flex-fill btn-sm" onclick="window.print()">
+            <i class="bi bi-printer me-1"></i>பிரிண்ட்
+          </button>
+          <button type="button" class="btn btn-emerald flex-fill btn-sm fw-bold" onclick="app.downloadPaymentReceiptPdf()">
+            <i class="bi bi-download me-1"></i>PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL 3: INLINE DIRECT CUSTOMER RE-LOAN -->
   <div class="modal fade" id="customerReLoanModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
       <div class="modal-content app-card p-3">
@@ -1473,7 +1648,7 @@
 
                 <div class="mb-3">
                   <label class="form-label small fw-bold text-secondary">கடன் தொடங்கும் தேதி *</label>
-                  <input type="date" class="form-control font-mono fw-bold" id="reLoanStartDate" onchange="app.calcReLoanCloseDate()" required />
+                  <input type="date" id="reLoanStartDate" onchange="app.calcReLoanCloseDate()" required />
                 </div>
 
                 <div class="p-2.5 rounded bg-success-subtle border border-success-subtle">
@@ -1512,15 +1687,15 @@
             </div>
           </div>
           <div class="modal-footer border-0 pt-2 d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal">ரத்து</button>
-            <button type="submit" class="btn btn-emerald w-50 fw-bold">மறு கடன் பதிவு செய்க</button>
+            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal"><span>ரத்து</span></button>
+            <button type="submit" class="btn btn-emerald w-50 fw-bold"><span>மறு கடன் பதிவு செய்க</span></button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: UNIVERSAL IN-APP CONFIRMATION (REPLACES BROWSER CONFIRM) -->
+  <!-- MODAL 4: UNIVERSAL IN-APP CONFIRMATION -->
   <div class="modal fade" id="appConfirmModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
       <div class="modal-content app-card p-3 text-center">
@@ -1532,14 +1707,14 @@
           <p class="text-secondary small mb-0" id="appConfirmModalMessage">நீங்கள் இந்த செயலை தொடர விரும்புகிறீர்களா?</p>
         </div>
         <div class="modal-footer border-0 pt-1 d-flex gap-2">
-          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal" id="btnConfirmCancel">ரத்து</button>
-          <button type="button" class="btn btn-danger flex-fill fw-bold" id="btnConfirmProceed">தொடரவும்</button>
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal" id="btnConfirmCancel"><span>ரத்து</span></button>
+          <button type="button" class="btn btn-danger flex-fill fw-bold" id="btnConfirmProceed"><span>தொடரவும்</span></button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: EDIT PAYMENT -->
+  <!-- MODAL 5: EDIT PAYMENT -->
   <div class="modal fade" id="editPaymentModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 380px;">
       <div class="modal-content app-card p-3">
@@ -1567,15 +1742,15 @@
             </div>
           </div>
           <div class="modal-footer border-0 pt-1 d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal">ரத்து</button>
-            <button type="submit" class="btn btn-emerald w-50 fw-bold">சேமிக்கவும்</button>
+            <button type="button" class="btn btn-outline-secondary w-50" data-bs-dismiss="modal"><span>ரத்து</span></button>
+            <button type="submit" class="btn btn-emerald w-50 fw-bold"><span>சேமிக்கவும்</span></button>
           </div>
         </form>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: DYNAMIC UPI QR SCANNER -->
+  <!-- MODAL 6: DYNAMIC UPI QR SCANNER -->
   <div class="modal fade" id="upiModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 340px;">
       <div class="modal-content app-card p-3 text-center">
@@ -1594,16 +1769,16 @@
           <div class="text-muted small font-mono" id="upiModalCustName">--</div>
         </div>
         <div class="modal-footer border-0 pt-1 d-flex gap-2">
-          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal">ரத்து</button>
+          <button type="button" class="btn btn-outline-secondary flex-fill" data-bs-dismiss="modal"><span>ரத்து</span></button>
           <button type="button" class="btn btn-emerald flex-fill fw-bold" onclick="app.confirmUpiReceived()">
-            <i class="bi bi-check2-all me-1"></i>வரவு வைக்கப்பட்டது
+            <i class="bi bi-check2-all me-1"></i><span>வரவு வைக்கப்பட்டது</span>
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: 58MM BLUETOOTH THERMAL RECEIPT SLIP -->
+  <!-- MODAL 7: 58MM BLUETOOTH THERMAL RECEIPT SLIP -->
   <div class="modal fade" id="thermalSlipModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered" style="max-width: 320px;">
       <div class="modal-content app-card p-3">
@@ -1617,16 +1792,16 @@
           </div>
         </div>
         <div class="modal-footer border-0 pt-2 d-flex gap-2">
-          <button type="button" class="btn btn-outline-secondary w-50 btn-sm" data-bs-dismiss="modal">மூடுக</button>
+          <button type="button" class="btn btn-outline-secondary w-50 btn-sm" data-bs-dismiss="modal"><span>மூடுக</span></button>
           <button type="button" class="btn btn-dark w-50 btn-sm" onclick="window.print()">
-            <i class="bi bi-printer me-1"></i>பிரிண்ட்
+            <i class="bi bi-printer me-1"></i><span>பிரிண்ட்</span>
           </button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- MODAL: PROFESSIONAL AUDIT PDF VIEWER -->
+  <!-- MODAL 8: PROFESSIONAL AUDIT PDF VIEWER -->
   <div class="modal fade" id="auditPdfModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content app-card p-3">
@@ -1634,10 +1809,10 @@
           <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-file-earmark-pdf-fill text-danger me-2"></i>நிறுவன தணிக்கை அறிக்கை (Audit PDF)</h5>
           <div class="d-flex gap-2">
             <button class="btn btn-danger btn-sm px-3 fw-bold" onclick="app.downloadAuditPdf()">
-              <i class="bi bi-download me-1"></i>PDF பதிவிறக்கம்
+              <i class="bi bi-download me-1"></i><span>PDF பதிவிறக்கம்</span>
             </button>
             <button class="btn btn-outline-dark btn-sm px-3 fw-bold" onclick="window.print()">
-              <i class="bi bi-printer me-1"></i>அச்சு (Print)
+              <i class="bi bi-printer me-1"></i><span>அச்சு (Print)</span>
             </button>
             <button type="button" class="btn-close ms-2" data-bs-dismiss="modal"></button>
           </div>
@@ -1651,7 +1826,14 @@
     </div>
   </div>
 
-  <!-- TOAST NOTIFICATION CONTAINER (REPLACES BROWSER ALERTS) -->
+  <!-- HIDDEN CONTAINER FOR RENDERING CUSTOMER LEDGER STATEMENT PDF -->
+  <div class="d-none">
+    <div id="customerLedgerPdfContainer" class="p-4 bg-white text-dark">
+      <!-- Populated dynamically when exporting customer ledger -->
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
   <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1090;">
     <div id="appLiveToast" class="toast align-items-center text-white border-0" role="alert" aria-live="assertive" aria-atomic="true">
       <div class="d-flex">
