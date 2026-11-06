@@ -1,6 +1,15 @@
 /**
  * Easy Collection - Micro Finance
  * Comprehensive Enterprise Stylesheet (styles.css)
+ * Features:
+ * - Full Dark & Light Theme Support
+ * - Responsive Desktop (1440px) & Mobile Bottom Nav Layouts
+ * - Interactive Grid Menu Tiles (Settings & Master Hub)
+ * - Sticky Table Headers & Custom Scrollbars
+ * - Modern Customer Profile, Progress Bar & Celebration Banners
+ * - Customer Ledger Statement Styling
+ * - WhatsApp Reminder Modal & Payment Receipt PDF Container Styling
+ * - 58mm Thermal Receipt & Audit Report Print Media Rules
  */
 
 /* ================= 1. DESIGN TOKENS & CSS VARIABLES ================= */
@@ -41,10 +50,11 @@
   --mono-font: 'JetBrains Mono', 'Courier New', monospace;
 
   /* Elevation Shadows */
-  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.04);
-  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-2xs: 0 1px 2px rgba(0, 0, 0, 0.03);
+  --shadow-xs: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.12);
 
   /* Transitions */
   --transition-fast: 0.15s ease;
@@ -153,7 +163,7 @@ body.dark-mode .input-group-text {
   user-select: none;
 }
 
-/* Subtle Badges */
+/* Subtle Badges & Accent Classes */
 .bg-purple-subtle { background-color: var(--purple-light) !important; }
 .text-purple { color: var(--purple-color) !important; }
 .bg-teal-subtle { background-color: #ccfbf1 !important; }
@@ -162,7 +172,7 @@ body.dark-mode .input-group-text {
 .bg-emerald { background-color: var(--primary) !important; }
 .text-emerald { color: var(--primary) !important; }
 
-/* Custom Thin Scrollbar */
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -234,7 +244,7 @@ body.dark-mode ::-webkit-scrollbar-thumb {
   transform: translateY(0);
 }
 
-/* ================= 5. SYSTEM DESKTOP LAYOUT (UP TO 1440PX) ================= */
+/* ================= 5. SYSTEM DESKTOP WIDESCREEN (UP TO 1440PX) ================= */
 .system-container {
   max-width: 1440px;
   margin: 0 auto;
@@ -488,14 +498,78 @@ body.dark-mode .biometric-scanner-ring {
   padding: 4px 8px;
 }
 
-/* ================= 14. ROUTE SERIAL & EFFECTIVE DATE BAR ================= */
+/* ================= 14. ROUTE SERIAL & OVERDUE BADGES ================= */
 #colCurrentEffectiveDate {
   outline: none;
   background: transparent;
   color: var(--text-main);
 }
+body.dark-mode #colCurrentEffectiveDate {
+  color: #f8fafc;
+}
 
-/* ================= 15. THERMAL RECEIPT SLIP (58MM) ================= */
+#badgeOverdueCount {
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 6px;
+  padding: 2px 6px;
+}
+
+/* ================= 15. WHATSAPP REMINDER MODAL STYLES ================= */
+#waRemindMessageText {
+  resize: vertical;
+  line-height: 1.6;
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--text-main);
+}
+
+body.dark-mode #waRemindMessageText {
+  background-color: #0f172a;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+/* ================= 16. PDF PAYMENT RECEIPT STYLES ================= */
+#renderablePdfReceiptContainer {
+  font-family: var(--app-font);
+  color: #0f172a;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 10px;
+}
+
+.pdf-receipt-header {
+  border-bottom: 2px dashed #059669;
+  padding-bottom: 10px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+
+.pdf-receipt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+.pdf-receipt-table td {
+  padding: 5px 4px;
+  vertical-align: middle;
+}
+
+.pdf-receipt-amount-banner {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 8px;
+  padding: 8px 12px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 0;
+}
+
+/* ================= 17. 58MM THERMAL RECEIPT SLIP ================= */
 .thermal-slip-body {
   font-family: var(--mono-font);
   font-size: 11px;
@@ -508,8 +582,9 @@ body.dark-mode .biometric-scanner-ring {
   margin: 0 auto;
 }
 
-/* ================= 16. AUDIT PDF DOCUMENT SHEET ================= */
-#auditPdfContainer {
+/* ================= 18. AUDIT PDF & CUSTOMER LEDGER STATEMENT ================= */
+#auditPdfContainer,
+#customerLedgerPdfContainer {
   font-family: var(--app-font);
   color: #0f172a;
   background: #ffffff;
@@ -538,14 +613,13 @@ body.dark-mode .biometric-scanner-ring {
   font-size: 11.5px;
 }
 
-/* ================= 17. TOAST NOTIFICATION STYLING ================= */
+/* ================= 19. TOAST NOTIFICATIONS & MODALS ================= */
 #appLiveToast {
   border-radius: 10px;
   box-shadow: var(--shadow-lg);
   font-size: 13.5px;
 }
 
-/* ================= 18. MODALS & DIALOGS ================= */
 .modal-content {
   border-radius: 16px;
   border: 1px solid var(--card-border);
@@ -556,7 +630,7 @@ body.dark-mode .biometric-scanner-ring {
   border-radius: 16px;
 }
 
-/* ================= 19. PRINT MEDIA ================= */
+/* ================= 20. PRINT MEDIA RULES ================= */
 @media print {
   body * {
     visibility: hidden !important;
@@ -576,12 +650,30 @@ body.dark-mode .biometric-scanner-ring {
     padding: 0 !important;
   }
 
-  /* Printable Audit PDF Container */
-  #auditPdfContainer,
-  #auditPdfContainer * {
+  /* Printable A4 PDF Payment Receipt */
+  #renderablePdfReceiptContainer,
+  #renderablePdfReceiptContainer * {
     visibility: visible !important;
   }
-  #auditPdfContainer {
+  #renderablePdfReceiptContainer {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 450px !important;
+    border: 1px solid #000 !important;
+    margin: 0 auto !important;
+  }
+
+  /* Printable Audit PDF & Customer Ledger Containers */
+  #auditPdfContainer,
+  #auditPdfContainer *,
+  #customerLedgerPdfContainer,
+  #customerLedgerPdfContainer * {
+    visibility: visible !important;
+  }
+  #auditPdfContainer,
+  #customerLedgerPdfContainer {
     position: absolute !important;
     left: 0 !important;
     top: 0 !important;
